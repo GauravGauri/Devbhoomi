@@ -13,17 +13,24 @@ const { notFound, errorHandler } = require('./middleware/errorMiddleware');
 connectDB();
 
 const app = express();
+app.set('trust proxy', 1);
 
 // Middlewares
 app.use(helmet());
 
 // CORS config
 const allowedOrigins = process.env.ALLOWED_ORIGINS 
-  ? process.env.ALLOWED_ORIGINS.split(',') 
+  ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim().replace(/\/$/, ''))
   : ['http://localhost:5173'];
 
 app.use(cors({
-  origin: allowedOrigins,
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS: ' + origin));
+    }
+  },
   credentials: true,
 }));
 
