@@ -9,17 +9,19 @@ const generateToken = (res, userId) => {
     expiresIn: '7d',
   });
 
+  const isProduction = process.env.NODE_ENV === 'production';
+
   res.cookie('jwt', accessToken, {
     httpOnly: true,
-    secure: process.env.NODE_ENV !== 'development', // Use secure cookies in production
-    sameSite: 'strict', // Prevent CSRF attacks
+    secure: isProduction, // Secure requires HTTPS, only use in production
+    sameSite: isProduction ? 'none' : 'strict', // Must be 'none' for cross-origin (Vercel <-> Render)
     maxAge: 15 * 60 * 1000, // 15 minutes
   });
 
   res.cookie('jwtRefresh', refreshToken, {
     httpOnly: true,
-    secure: process.env.NODE_ENV !== 'development', // Use secure cookies in production
-    sameSite: 'strict', // Prevent CSRF attacks
+    secure: isProduction,
+    sameSite: isProduction ? 'none' : 'strict',
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
   });
 
@@ -27,12 +29,18 @@ const generateToken = (res, userId) => {
 };
 
 const clearToken = (res) => {
+  const isProduction = process.env.NODE_ENV === 'production';
+  
   res.cookie('jwt', '', {
     httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? 'none' : 'strict',
     expires: new Date(0),
   });
   res.cookie('jwtRefresh', '', {
     httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? 'none' : 'strict',
     expires: new Date(0),
   });
 };
