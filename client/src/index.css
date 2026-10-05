@@ -1,6 +1,4 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 @layer base {
   :root {
@@ -20,9 +18,12 @@
 
 @layer base {
   * {
-    @apply border-gray-200;
+    border-color: #e5e7eb;
   }
   body {
-    @apply bg-gray-50 text-gray-900 antialiased;
+    background-color: #f9fafb;
+    color: #111827;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 }
