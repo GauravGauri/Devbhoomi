@@ -1,11 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '../../layouts/AdminLayout';
 import { Button } from '../../components/ui/Button';
-import { Search, Download, Filter } from 'lucide-react';
+import { Search, Download, Filter, Clock } from 'lucide-react';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 
 const AdminAttendance = () => {
+  const [attendances, setAttendances] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchAttendances = async () => {
+      try {
+        const { data } = await api.get('/attendance/all');
+        setAttendances(data.data);
+      } catch (error) {
+        toast.error('Failed to fetch attendance records');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchAttendances();
+  }, []);
+
   return (
     <AdminLayout>
       <header className="h-16 flex items-center justify-between px-8 bg-white border-b border-gray-200">
@@ -29,28 +46,46 @@ const AdminAttendance = () => {
                   placeholder="Search by name..."
                 />
               </div>
-              <Button variant="outline" className="flex items-center">
-                <Filter className="w-4 h-4 mr-2" /> Filters
-              </Button>
             </div>
             <div>
               <input type="date" className="border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-700" />
             </div>
           </div>
           
-          <div className="p-12 text-center text-gray-500">
-            <CalendarIcon className="w-12 h-12 mx-auto text-gray-300 mb-4" />
-            <p>Admin Attendance View Component Ready</p>
-            <p className="text-sm mt-2">API integration goes here based on requirements</p>
-          </div>
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Employee</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Check In</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Check Out</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {loading ? (
+                <tr><td colSpan="5" className="text-center py-4">Loading...</td></tr>
+              ) : attendances.map((record) => (
+                <tr key={record._id}>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{record.employee?.name || 'Unknown'}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{record.date}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{record.checkIn ? new Date(record.checkIn).toLocaleTimeString() : '-'}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{record.checkOut ? new Date(record.checkOut).toLocaleTimeString() : '-'}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {record.late ? (
+                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Late</span>
+                    ) : (
+                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">On Time</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
     </AdminLayout>
   );
 };
-
-const CalendarIcon = (props) => (
-  <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-);
 
 export default AdminAttendance;

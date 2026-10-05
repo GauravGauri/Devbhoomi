@@ -122,4 +122,16 @@ const getNetworkStatus = async (req, res, next) => {
   }
 };
 
-module.exports = { checkIn, checkOut, getMyAttendanceStatus, getNetworkStatus };
+// @desc    Get all attendances (Admin)
+// @route   GET /api/attendance/all
+// @access  Private/Admin
+const getAllAttendances = async (req, res, next) => {
+  try {
+    const records = await Attendance.find().populate('employee', 'name employeeId').sort('-date -createdAt');
+    res.status(200).json({ success: true, data: records });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { checkIn, checkOut, getMyAttendanceStatus, getNetworkStatus, getAllAttendances };

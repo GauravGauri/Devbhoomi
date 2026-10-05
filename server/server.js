@@ -53,6 +53,7 @@ app.use('/api/admin/employees', require('./routes/employeeRoutes'));
 app.use('/api/attendance', require('./routes/attendanceRoutes'));
 app.use('/api/leaves', require('./routes/leaveRoutes'));
 app.use('/api/admin/leaves', require('./routes/adminLeaveRoutes'));
+app.use('/api/admin/settings', require('./routes/settingsRoutes'));
 
 // Error handlers
 app.use(notFound);
