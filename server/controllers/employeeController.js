@@ -1,4 +1,6 @@
 const User = require('../models/User');
+require('../models/Department');
+require('../models/Shift');
 const logAudit = require('../utils/auditLogger');
 
 // @desc    Get all employees
