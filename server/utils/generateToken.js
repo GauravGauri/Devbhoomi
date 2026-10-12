@@ -2,7 +2,7 @@ const jwt = require('jsonwebtoken');
 
 const generateToken = (res, userId) => {
   const accessToken = jwt.sign({ userId }, process.env.JWT_SECRET, {
-    expiresIn: '15m',
+    expiresIn: '7d',
   });
 
   const refreshToken = jwt.sign({ userId }, process.env.JWT_REFRESH_SECRET, {
@@ -14,14 +14,14 @@ const generateToken = (res, userId) => {
   res.cookie('jwt', accessToken, {
     httpOnly: true,
     secure: isProduction, // Secure requires HTTPS, only use in production
-    sameSite: isProduction ? 'none' : 'strict', // Must be 'none' for cross-origin (Vercel <-> Render)
-    maxAge: 15 * 60 * 1000, // 15 minutes
+    sameSite: isProduction ? 'none' : 'lax', // Use 'none' for Vercel <-> Render cross-site, 'lax' for local dev
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
   });
 
   res.cookie('jwtRefresh', refreshToken, {
     httpOnly: true,
     secure: isProduction,
-    sameSite: isProduction ? 'none' : 'strict',
+    sameSite: isProduction ? 'none' : 'lax',
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
   });
 
@@ -34,13 +34,13 @@ const clearToken = (res) => {
   res.cookie('jwt', '', {
     httpOnly: true,
     secure: isProduction,
-    sameSite: isProduction ? 'none' : 'strict',
+    sameSite: isProduction ? 'none' : 'lax',
     expires: new Date(0),
   });
   res.cookie('jwtRefresh', '', {
     httpOnly: true,
     secure: isProduction,
-    sameSite: isProduction ? 'none' : 'strict',
+    sameSite: isProduction ? 'none' : 'lax',
     expires: new Date(0),
   });
 };

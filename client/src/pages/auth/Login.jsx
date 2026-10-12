@@ -28,7 +28,7 @@ const Login = () => {
     setIsLoading(true);
     try {
       const response = await api.post('/auth/login', data);
-      login(response.data.data);
+      login(response.data.data, response.data.token);
       toast.success('Logged in successfully');
       navigate('/employee/dashboard');
     } catch (error) {

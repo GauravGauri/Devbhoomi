@@ -16,26 +16,65 @@ const app = express();
 app.set('trust proxy', 1);
 
 // Middlewares
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  crossOriginEmbedderPolicy: false,
+}));
 
-// CORS config
-const rawOrigins = [
-  ...(process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : []),
-  ...(process.env.CLIENT_URL ? [process.env.CLIENT_URL] : []),
-  'http://localhost:5173',
-];
-const allowedOrigins = [...new Set(rawOrigins.map(o => o.trim().replace(/\/+$/, '')).filter(Boolean))];
+// CORS Configuration
+const parseOrigins = () => {
+  const list = [];
+  if (process.env.CLIENT_URL) list.push(...process.env.CLIENT_URL.split(','));
+  if (process.env.ALLOWED_ORIGINS) list.push(...process.env.ALLOWED_ORIGINS.split(','));
+  return list.map(o => o.trim().replace(/\/+$/, '')).filter(Boolean);
+};
 
-app.use(cors({
+const explicitOrigins = parseOrigins();
+
+const isOriginAllowed = (origin) => {
+  // Allow requests without Origin (e.g. curl, postman, server-side, local health checks)
+  if (!origin) return true;
+
+  const cleanOrigin = origin.trim().replace(/\/+$/, '');
+
+  // In development, allow all origins
+  if (process.env.NODE_ENV === 'development') return true;
+
+  // Explicit wildcard
+  if (explicitOrigins.includes('*')) return true;
+
+  // Match explicitly allowed origins from .env
+  if (explicitOrigins.includes(cleanOrigin)) return true;
+
+  // Allow all localhost and 127.0.0.1 ports (Vite 5173, 5174, Next/React 3000, preview 4173, etc.)
+  if (/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(cleanOrigin)) return true;
+
+  // Allow all Vercel deployment URLs (production and preview branches)
+  if (/^https:\/\/([a-zA-Z0-9_-]+\.)*vercel\.app$/.test(cleanOrigin)) return true;
+
+  // Allow Render web service URLs
+  if (/^https:\/\/([a-zA-Z0-9_-]+\.)*onrender\.com$/.test(cleanOrigin)) return true;
+
+  return false;
+};
+
+const corsOptions = {
   origin: function (origin, callback) {
-    if (!origin || allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+    if (isOriginAllowed(origin)) {
       callback(null, true);
     } else {
-      callback(new Error('Not allowed by CORS: ' + origin));
+      console.warn(`[CORS] Blocked request from unauthorized origin: ${origin}`);
+      callback(null, false);
     }
   },
   credentials: true,
-}));
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+  exposedHeaders: ['Set-Cookie'],
+  maxAge: 86400,
+};
+
+app.use(cors(corsOptions));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));

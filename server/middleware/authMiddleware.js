@@ -4,7 +4,14 @@ const User = require('../models/User');
 const protect = async (req, res, next) => {
   let token;
 
-  token = req.cookies.jwt;
+  // 1. Check Bearer token in Authorization header (standard for cross-origin SPA)
+  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+    token = req.headers.authorization.split(' ')[1];
+  }
+  // 2. Fallback to HTTP-only cookie
+  else if (req.cookies && req.cookies.jwt) {
+    token = req.cookies.jwt;
+  }
 
   if (token) {
     try {
@@ -24,13 +31,13 @@ const protect = async (req, res, next) => {
 
       next();
     } catch (error) {
-      console.error(error);
+      console.error('Auth verification error:', error.message);
       res.status(401);
-      next(new Error('Not authorized, token failed'));
+      next(new Error('Not authorized, token invalid or expired'));
     }
   } else {
     res.status(401);
-    next(new Error('Not authorized, no token'));
+    next(new Error('Not authorized, no token provided'));
   }
 };
 

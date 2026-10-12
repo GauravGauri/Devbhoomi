@@ -20,10 +20,11 @@ const loginUser = async (req, res, next) => {
         throw new Error('Not authorized as employee.');
       }
 
-      generateToken(res, user._id);
+      const { accessToken } = generateToken(res, user._id);
 
       res.status(200).json({
         success: true,
+        token: accessToken,
         data: {
           _id: user._id,
           employeeId: user.employeeId,
@@ -64,10 +65,11 @@ const loginAdmin = async (req, res, next) => {
         throw new Error('Not authorized as admin.');
       }
 
-      generateToken(res, user._id);
+      const { accessToken } = generateToken(res, user._id);
 
       res.status(200).json({
         success: true,
+        token: accessToken,
         data: {
           _id: user._id,
           employeeId: user.employeeId,

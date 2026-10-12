@@ -28,7 +28,7 @@ const AdminLogin = () => {
     setIsLoading(true);
     try {
       const response = await api.post('/auth/admin/login', data);
-      login(response.data.data);
+      login(response.data.data, response.data.token);
       toast.success('Admin logged in successfully');
       navigate('/admin/dashboard');
     } catch (error) {
