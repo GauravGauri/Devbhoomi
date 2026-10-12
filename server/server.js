@@ -19,9 +19,12 @@ app.set('trust proxy', 1);
 app.use(helmet());
 
 // CORS config
-const allowedOrigins = process.env.ALLOWED_ORIGINS 
-  ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim().replace(/\/$/, ''))
-  : ['http://localhost:5173'];
+const rawOrigins = [
+  ...(process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : []),
+  ...(process.env.CLIENT_URL ? [process.env.CLIENT_URL] : []),
+  'http://localhost:5173',
+];
+const allowedOrigins = [...new Set(rawOrigins.map(o => o.trim().replace(/\/+$/, '')).filter(Boolean))];
 
 app.use(cors({
   origin: function (origin, callback) {
