@@ -6,6 +6,7 @@ import { Toaster } from 'react-hot-toast';
 import Login from './pages/auth/Login';
 import AdminLogin from './pages/auth/AdminLogin';
 import EmployeeDashboard from './pages/employee/EmployeeDashboard';
+import EmployeeAttendance from './pages/employee/EmployeeAttendance';
 import LeaveRequests from './pages/employee/LeaveRequests';
 import Profile from './pages/employee/Profile';
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -36,7 +37,7 @@ const App = () => {
         
         {/* Protected Employee Routes */}
         <Route path="/employee/dashboard" element={user && user.role === 'employee' ? <EmployeeDashboard /> : <Navigate to="/login" />} />
-        <Route path="/employee/attendance" element={user && user.role === 'employee' ? <EmployeeDashboard /> : <Navigate to="/login" />} />
+        <Route path="/employee/attendance" element={user && user.role === 'employee' ? <EmployeeAttendance /> : <Navigate to="/login" />} />
         <Route path="/employee/leaves" element={user && user.role === 'employee' ? <LeaveRequests /> : <Navigate to="/login" />} />
         <Route path="/employee/profile" element={user && user.role === 'employee' ? <Profile /> : <Navigate to="/login" />} />
         

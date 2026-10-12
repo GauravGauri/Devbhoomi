@@ -49,10 +49,14 @@ app.get('/api/health', (req, res) => {
 
 // Routes
 app.use('/api/auth', require('./routes/authRoutes'));
+app.use('/api/admin/dashboard', require('./routes/adminDashboardRoutes'));
 app.use('/api/admin/employees', require('./routes/employeeRoutes'));
 app.use('/api/attendance', require('./routes/attendanceRoutes'));
 app.use('/api/leaves', require('./routes/leaveRoutes'));
 app.use('/api/admin/leaves', require('./routes/adminLeaveRoutes'));
+app.use('/api/admin/reports', require('./routes/reportRoutes'));
+app.use('/api/admin/departments', require('./routes/departmentRoutes'));
+app.use('/api/admin/holidays', require('./routes/holidayRoutes'));
 app.use('/api/admin/settings', require('./routes/settingsRoutes'));
 
 // Error handlers

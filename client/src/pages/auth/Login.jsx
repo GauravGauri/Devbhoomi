@@ -20,7 +20,7 @@ const Login = () => {
   const { login } = useContext(AuthContext);
   const navigate = useNavigate();
 
-  const { register, handleSubmit, formState: { errors } } = useForm({
+  const { register, handleSubmit, setValue, formState: { errors } } = useForm({
     resolver: yupResolver(schema),
   });
 
@@ -38,12 +38,26 @@ const Login = () => {
     }
   };
 
+  const handleFillDemo = () => {
+    setValue('username', 'Gaurii');
+    setValue('password', 'Employee123!');
+    toast.success('Test employee credentials autofilled!');
+  };
+
+  const handleForgotPassword = (e) => {
+    e.preventDefault();
+    toast('Please contact your HR administrator to reset your password via the Employee Directory.', {
+      icon: 'ℹ️',
+      duration: 6000,
+    });
+  };
+
   return (
     <div className="flex min-h-screen flex-col justify-center bg-gray-50 py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="flex justify-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg">
-            <UserCircle size={40} />
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-600/30 font-bold text-2xl">
+            DB
           </div>
         </div>
         <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900 tracking-tight">
@@ -55,7 +69,22 @@ const Login = () => {
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white px-4 py-8 shadow-xl shadow-blue-900/5 sm:rounded-xl sm:px-10 border border-gray-100">
+        <div className="bg-white px-4 py-8 shadow-xl shadow-blue-900/5 sm:rounded-2xl sm:px-10 border border-gray-100">
+          {/* Quick Demo Autofill Pill */}
+          <div className="mb-6 p-3 rounded-xl bg-blue-50/60 border border-blue-100 flex items-center justify-between text-xs">
+            <div>
+              <span className="font-bold text-blue-900">Demo Account</span>
+              <p className="text-blue-700 text-[11px]">User: Gaurii / Pass: Employee123!</p>
+            </div>
+            <button
+              type="button"
+              onClick={handleFillDemo}
+              className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg text-xs transition-colors shadow-xs"
+            >
+              Fill In
+            </button>
+          </div>
+
           <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
             <Input
               label="Username"
@@ -79,20 +108,24 @@ const Login = () => {
 
             <div className="flex items-center justify-between">
               <div className="text-sm">
-                <a href="#" className="font-medium text-blue-600 hover:text-blue-500">
+                <a
+                  href="#forgot"
+                  onClick={handleForgotPassword}
+                  className="font-medium text-blue-600 hover:text-blue-500 cursor-pointer"
+                >
                   Forgot your password?
                 </a>
               </div>
             </div>
 
-            <Button type="submit" className="w-full" isLoading={isLoading}>
-              Sign in
+            <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" isLoading={isLoading}>
+              Sign in to Employee Portal
             </Button>
           </form>
 
           <div className="mt-6 text-center">
-            <Link to="/admin/login" className="text-sm font-medium text-gray-500 hover:text-gray-900">
-              Are you an Admin? Login here
+            <Link to="/admin/login" className="text-sm font-semibold text-gray-600 hover:text-gray-900">
+              Are you an Admin? Login to Admin Console →
             </Link>
           </div>
         </div>

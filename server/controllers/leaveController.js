@@ -24,8 +24,34 @@ const createLeaveRequest = async (req, res, next) => {
 // @access  Private/Employee
 const getMyLeaves = async (req, res, next) => {
   try {
-    const leaves = await Leave.find({ employee: req.user._id }).sort('-createdAt');
+    const filter = { employee: req.user._id };
+    if (req.query.status && req.query.status !== 'All') {
+      filter.status = req.query.status;
+    }
+    const leaves = await Leave.find(filter).sort('-createdAt');
     res.status(200).json({ success: true, data: leaves });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Cancel my pending leave
+// @route   DELETE /api/leaves/:id
+// @access  Private/Employee
+const cancelMyLeave = async (req, res, next) => {
+  try {
+    const leave = await Leave.findOne({ _id: req.params.id, employee: req.user._id });
+    if (!leave) {
+      res.status(404);
+      throw new Error('Leave request not found');
+    }
+    if (leave.status !== 'Pending') {
+      res.status(400);
+      throw new Error('Only pending leave requests can be cancelled');
+    }
+    leave.status = 'Cancelled';
+    await leave.save();
+    res.status(200).json({ success: true, message: 'Leave request cancelled successfully', data: leave });
   } catch (error) {
     next(error);
   }
@@ -36,7 +62,13 @@ const getMyLeaves = async (req, res, next) => {
 // @access  Private/Admin
 const getAllLeaves = async (req, res, next) => {
   try {
-    const leaves = await Leave.find().populate('employee', 'name employeeId department').sort('-createdAt');
+    const filter = {};
+    if (req.query.status && req.query.status !== 'All') {
+      filter.status = req.query.status;
+    }
+    const leaves = await Leave.find(filter)
+      .populate('employee', 'name employeeId email department')
+      .sort('-createdAt');
     res.status(200).json({ success: true, data: leaves });
   } catch (error) {
     next(error);
@@ -79,4 +111,4 @@ const updateLeaveStatus = async (req, res, next) => {
   }
 };
 
-module.exports = { createLeaveRequest, getMyLeaves, getAllLeaves, updateLeaveStatus };
+module.exports = { createLeaveRequest, getMyLeaves, cancelMyLeave, getAllLeaves, updateLeaveStatus };
