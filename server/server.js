@@ -46,14 +46,21 @@ const isOriginAllowed = (origin) => {
   // Match explicitly allowed origins from .env
   if (explicitOrigins.includes(cleanOrigin)) return true;
 
-  // Allow all localhost and 127.0.0.1 ports (Vite 5173, 5174, Next/React 3000, preview 4173, etc.)
+  // Robust URL hostname matching for all Vercel & Render subdomains/previews
+  try {
+    const parsed = new URL(cleanOrigin);
+    if (parsed.hostname.endsWith('.vercel.app') || parsed.hostname === 'vercel.app') return true;
+    if (parsed.hostname.endsWith('.onrender.com') || parsed.hostname === 'onrender.com') return true;
+    if (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1') return true;
+  } catch (err) {
+    // Regex fallback if URL parsing fails
+  }
+
+  // Regex fallbacks
+  if (/^https?:\/\/([a-zA-Z0-9_.-]+\.)*vercel\.app$/i.test(cleanOrigin)) return true;
+  if (/^https?:\/\/([a-zA-Z0-9_.-]+\.)*onrender\.com$/i.test(cleanOrigin)) return true;
   if (/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(cleanOrigin)) return true;
-
-  // Allow all Vercel deployment URLs (production and preview branches)
-  if (/^https:\/\/([a-zA-Z0-9_-]+\.)*vercel\.app$/.test(cleanOrigin)) return true;
-
-  // Allow Render web service URLs
-  if (/^https:\/\/([a-zA-Z0-9_-]+\.)*onrender\.com$/.test(cleanOrigin)) return true;
+  if (/^http:\/\/(192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)(:\d+)?$/.test(cleanOrigin)) return true;
 
   return false;
 };
@@ -69,7 +76,16 @@ const corsOptions = {
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'X-Requested-With',
+    'Accept',
+    'Origin',
+    'x-wifi-name',
+    'X-Wifi-Name',
+    'x-forwarded-for',
+  ],
   exposedHeaders: ['Set-Cookie'],
   maxAge: 86400,
 };
