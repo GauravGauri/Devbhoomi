@@ -34,6 +34,7 @@ const AdminAttendance = () => {
     date: new Date().toISOString().slice(0, 10),
     checkInTime: '09:30',
     checkOutTime: '18:30',
+    totalBreakMinutes: 0,
     late: false,
     attendanceType: 'Present',
     remarks: 'Manual entry verified by Admin',
@@ -84,13 +85,14 @@ const AdminAttendance = () => {
       return;
     }
 
-    const headers = ['Employee Name', 'Employee ID', 'Date', 'Check In', 'Check Out', 'Working Hours', 'Status', 'Late Minutes', 'Remarks'];
+    const headers = ['Employee Name', 'Employee ID', 'Date', 'Check In', 'Check Out', 'Break Deducted', 'Net Working Hours', 'Status', 'Late Minutes', 'Remarks'];
     const rows = attendances.map((r) => [
       `"${(r.employee?.name || 'Unknown').replace(/"/g, '""')}"`,
       r.employee?.employeeId || '-',
       r.date,
       r.checkIn ? new Date(r.checkIn).toLocaleTimeString() : '-',
       r.checkOut ? new Date(r.checkOut).toLocaleTimeString() : '-',
+      r.totalBreakMinutes ? `${Math.floor(r.totalBreakMinutes / 60)}h ${r.totalBreakMinutes % 60}m` : '0m',
       r.workingHours ? `${Math.floor(r.workingHours / 60)}h ${r.workingHours % 60}m` : '0h 0m',
       r.late ? 'Late' : r.attendanceType,
       r.lateMinutes || 0,
@@ -125,6 +127,7 @@ const AdminAttendance = () => {
         date: manualData.date,
         checkIn: checkInISO,
         checkOut: checkOutISO,
+        totalBreakMinutes: parseInt(manualData.totalBreakMinutes) || 0,
         late: manualData.late,
         attendanceType: manualData.attendanceType,
         remarks: manualData.remarks,
@@ -283,7 +286,8 @@ const AdminAttendance = () => {
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Date</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Check In</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Check Out</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Working Hours</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Break Deducted</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Net Work Hours</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Status</th>
                   <th className="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase">Action</th>
                 </tr>
@@ -291,14 +295,14 @@ const AdminAttendance = () => {
               <tbody className="bg-white divide-y divide-gray-200">
                 {loading ? (
                   <tr>
-                    <td colSpan="7" className="text-center py-12 text-gray-500 text-sm">
+                    <td colSpan="8" className="text-center py-12 text-gray-500 text-sm">
                       <div className="inline-block animate-spin rounded-full h-6 w-6 border-2 border-indigo-600 border-t-transparent mr-2 align-middle"></div>
                       Loading attendance ledger...
                     </td>
                   </tr>
                 ) : attendances.length === 0 ? (
                   <tr>
-                    <td colSpan="7" className="text-center py-12 text-gray-500 text-sm">
+                    <td colSpan="8" className="text-center py-12 text-gray-500 text-sm">
                       No attendance logs match the active criteria.
                     </td>
                   </tr>
@@ -329,7 +333,11 @@ const AdminAttendance = () => {
                         {record.checkOut ? new Date(record.checkOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
                       </td>
 
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-amber-700">
+                        {record.totalBreakMinutes ? `${Math.floor(record.totalBreakMinutes / 60)}h ${record.totalBreakMinutes % 60}m` : '-'}
+                      </td>
+
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
                         {record.workingHours ? `${Math.floor(record.workingHours / 60)}h ${record.workingHours % 60}m` : '-'}
                       </td>
 
@@ -421,6 +429,19 @@ const AdminAttendance = () => {
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Lunch / Break Duration (Minutes deducted)</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={manualData.totalBreakMinutes}
+                  onChange={(e) => setManualData({ ...manualData, totalBreakMinutes: e.target.value })}
+                  placeholder="e.g. 60 (deducted from working hours)"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                />
+                <p className="text-[11px] text-gray-400 mt-0.5">Deducted from gross duration to determine net working hours.</p>
               </div>
 
               <div className="grid grid-cols-2 gap-4">

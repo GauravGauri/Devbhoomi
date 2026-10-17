@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import EmployeeLayout from '../../layouts/EmployeeLayout';
 import { Button } from '../../components/ui/Button';
-import { Download, Calendar, Clock, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
+import { Download, Calendar, Clock, CheckCircle2, AlertCircle, RefreshCw, Utensils } from 'lucide-react';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 
 const EmployeeAttendance = () => {
   const [attendances, setAttendances] = useState([]);
-  const [summary, setSummary] = useState({ totalPresent: 0, totalLate: 0, totalHours: '0.0' });
+  const [summary, setSummary] = useState({ totalPresent: 0, totalLate: 0, totalHours: '0.0', totalBreakHours: '0.0' });
   const [loading, setLoading] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
 
@@ -36,11 +36,12 @@ const EmployeeAttendance = () => {
       return;
     }
 
-    const headers = ['Date', 'Check In', 'Check Out', 'Working Hours', 'Status', 'Late Minutes', 'Remarks'];
+    const headers = ['Date', 'Check In', 'Check Out', 'Break Deducted', 'Net Working Hours', 'Status', 'Late Minutes', 'Remarks'];
     const rows = attendances.map(a => [
       a.date,
       a.checkIn ? new Date(a.checkIn).toLocaleTimeString() : '-',
       a.checkOut ? new Date(a.checkOut).toLocaleTimeString() : '-',
+      a.totalBreakMinutes ? `${Math.floor(a.totalBreakMinutes / 60)}h ${a.totalBreakMinutes % 60}m` : '0m',
       a.workingHours ? `${Math.floor(a.workingHours / 60)}h ${a.workingHours % 60}m` : '0h 0m',
       a.late ? 'Late' : a.attendanceType,
       a.lateMinutes || 0,
@@ -63,7 +64,7 @@ const EmployeeAttendance = () => {
       <header className="h-16 flex items-center justify-between px-8 bg-white border-b border-gray-200">
         <div>
           <h2 className="text-xl font-semibold text-gray-800">My Attendance History</h2>
-          <p className="text-xs text-gray-500">View and track all your logged punches and work sessions</p>
+          <p className="text-xs text-gray-500">View and track all your logged punches, break deductions, and work sessions</p>
         </div>
         <div className="flex items-center space-x-3">
           <Button variant="outline" size="sm" onClick={fetchHistory} className="flex items-center">
@@ -77,7 +78,7 @@ const EmployeeAttendance = () => {
 
       <div className="flex-1 overflow-y-auto p-8">
         {/* Metric Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <div className="bg-white rounded-xl shadow-xs border border-gray-200 p-6 flex items-center">
             <div className="w-12 h-12 rounded-xl bg-green-50 text-green-600 flex items-center justify-center mr-4">
               <CheckCircle2 className="w-6 h-6" />
@@ -103,8 +104,18 @@ const EmployeeAttendance = () => {
               <Clock className="w-6 h-6" />
             </div>
             <div>
-              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Total Work Hours</span>
+              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Net Work Hours</span>
               <p className="text-2xl font-bold text-blue-600 mt-0.5">{summary.totalHours} hrs</p>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl shadow-xs border border-gray-200 p-6 flex items-center">
+            <div className="w-12 h-12 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center mr-4">
+              <Utensils className="w-6 h-6" />
+            </div>
+            <div>
+              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Break Deducted</span>
+              <p className="text-2xl font-bold text-orange-600 mt-0.5">{summary.totalBreakHours || '0.0'} hrs</p>
             </div>
           </div>
         </div>
@@ -135,7 +146,8 @@ const EmployeeAttendance = () => {
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Date</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Check In</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Check Out</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Working Hours</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Break Taken</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Net Work Hours</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Status</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Remarks</th>
                 </tr>
@@ -143,14 +155,14 @@ const EmployeeAttendance = () => {
               <tbody className="bg-white divide-y divide-gray-200">
                 {loading ? (
                   <tr>
-                    <td colSpan="6" className="text-center py-8 text-gray-500">
+                    <td colSpan="7" className="text-center py-8 text-gray-500">
                       <div className="inline-block animate-spin rounded-full h-6 w-6 border-2 border-blue-600 border-t-transparent mr-2 align-middle"></div>
                       Loading your attendance...
                     </td>
                   </tr>
                 ) : attendances.length === 0 ? (
                   <tr>
-                    <td colSpan="6" className="text-center py-12 text-gray-500">
+                    <td colSpan="7" className="text-center py-12 text-gray-500">
                       No attendance records found for {selectedMonth}.
                     </td>
                   </tr>
@@ -166,7 +178,10 @@ const EmployeeAttendance = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-mono">
                         {record.checkOut ? new Date(record.checkOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-amber-700">
+                        {record.totalBreakMinutes ? `${Math.floor(record.totalBreakMinutes / 60)}h ${record.totalBreakMinutes % 60}m` : '-'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
                         {record.workingHours ? `${Math.floor(record.workingHours / 60)}h ${record.workingHours % 60}m` : '-'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">

@@ -13,6 +13,7 @@ const getSettings = async (req, res, next) => {
         officeEndTime: '18:30',
         gracePeriod: 15,
         networkRestrictionEnabled: false,
+        allowedWifiNames: ['DevBhoomi-WiFi'],
         allowedIPs: ['127.0.0.1'],
       });
     }
@@ -27,7 +28,7 @@ const getSettings = async (req, res, next) => {
 // @access  Private/Admin
 const updateSettings = async (req, res, next) => {
   try {
-    const { officeStartTime, officeEndTime, gracePeriod, networkRestrictionEnabled, allowedIPs } = req.body;
+    const { officeStartTime, officeEndTime, gracePeriod, networkRestrictionEnabled, allowedWifiNames, allowedIPs } = req.body;
     
     let settings = await AttendanceSettings.findOne();
     if (!settings) {
@@ -38,7 +39,12 @@ const updateSettings = async (req, res, next) => {
     settings.officeEndTime = officeEndTime !== undefined ? officeEndTime : settings.officeEndTime;
     settings.gracePeriod = gracePeriod !== undefined ? gracePeriod : settings.gracePeriod;
     settings.networkRestrictionEnabled = networkRestrictionEnabled !== undefined ? networkRestrictionEnabled : settings.networkRestrictionEnabled;
-    settings.allowedIPs = allowedIPs !== undefined ? allowedIPs : settings.allowedIPs;
+    if (allowedWifiNames !== undefined) {
+      settings.allowedWifiNames = Array.isArray(allowedWifiNames) ? allowedWifiNames.map(s => s.trim()).filter(Boolean) : settings.allowedWifiNames;
+    }
+    if (allowedIPs !== undefined) {
+      settings.allowedIPs = Array.isArray(allowedIPs) ? allowedIPs.map(s => s.trim()).filter(Boolean) : settings.allowedIPs;
+    }
     
     await settings.save();
     
@@ -47,7 +53,7 @@ const updateSettings = async (req, res, next) => {
       action: 'UPDATE_SETTINGS',
       targetType: 'AttendanceSettings',
       targetId: settings._id,
-      newValue: { officeStartTime, officeEndTime, gracePeriod, networkRestrictionEnabled, allowedIPs },
+      newValue: { officeStartTime, officeEndTime, gracePeriod, networkRestrictionEnabled, allowedWifiNames: settings.allowedWifiNames, allowedIPs: settings.allowedIPs },
       ipAddress: req.ip,
     });
     

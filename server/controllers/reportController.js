@@ -34,6 +34,8 @@ const getAttendanceReport = async (req, res, next) => {
       date: r.date,
       checkIn: r.checkIn ? moment(r.checkIn).format('hh:mm A') : '-',
       checkOut: r.checkOut ? moment(r.checkOut).format('hh:mm A') : '-',
+      breakDuration: r.totalBreakMinutes ? `${Math.floor(r.totalBreakMinutes / 60)}h ${r.totalBreakMinutes % 60}m` : '0m',
+      breakMinutes: r.totalBreakMinutes || 0,
       workingHours: r.workingHours ? `${Math.floor(r.workingHours / 60)}h ${r.workingHours % 60}m` : '0h 0m',
       status: r.late ? 'Late' : r.attendanceType,
       lateMinutes: r.lateMinutes || 0,

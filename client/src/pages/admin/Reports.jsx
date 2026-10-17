@@ -65,7 +65,7 @@ const AdminReports = () => {
       const { data } = await api.get(`/admin/reports/attendance?month=${attMonth}`);
       const records = data.data || [];
 
-      const headers = ['Employee Name', 'Employee ID', 'Department', 'Date', 'Check In', 'Check Out', 'Working Hours', 'Status', 'Remarks'];
+      const headers = ['Employee Name', 'Employee ID', 'Department', 'Date', 'Check In', 'Check Out', 'Break Deducted', 'Net Working Hours', 'Status', 'Remarks'];
       const rows = records.map((r) => [
         r.employeeName,
         r.employeeId,
@@ -73,6 +73,7 @@ const AdminReports = () => {
         r.date,
         r.checkIn,
         r.checkOut,
+        r.breakDuration || '0m',
         r.workingHours,
         r.status,
         r.remarks,

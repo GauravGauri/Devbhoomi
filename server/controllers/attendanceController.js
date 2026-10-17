@@ -1,14 +1,8 @@
 const Attendance = require('../models/Attendance');
 const AttendanceSettings = require('../models/AttendanceSettings');
+const { checkNetworkAuth } = require('../utils/networkAuth');
 const logAudit = require('../utils/auditLogger');
 const moment = require('moment');
-
-// Helper to check network authorization
-const checkNetworkAuth = async (reqIP) => {
-  const settings = await AttendanceSettings.findOne();
-  if (!settings || !settings.networkRestrictionEnabled) return true;
-  return settings.allowedIPs.includes(reqIP) || reqIP === process.env.OFFICE_PUBLIC_IP;
-};
 
 // @desc    Mark Check-in
 // @route   POST /api/attendance/check-in
@@ -17,11 +11,11 @@ const checkIn = async (req, res, next) => {
   try {
     const today = moment().format('YYYY-MM-DD');
     const currentTime = new Date();
-    const isAuthorized = await checkNetworkAuth(req.ip);
+    const netAuth = await checkNetworkAuth(req);
 
-    if (!isAuthorized) {
+    if (!netAuth.authorized) {
       res.status(403);
-      throw new Error('You are not connected to the authorized DevBhoomi office network. Attendance marking is currently unavailable.');
+      throw new Error(netAuth.message || 'You are not connected to an authorized office Wi-Fi network or IP address.');
     }
 
     const existingRecord = await Attendance.findOne({ employee: req.user._id, date: today });
@@ -45,11 +39,121 @@ const checkIn = async (req, res, next) => {
       attendanceType: 'Present',
       late: isLate,
       lateMinutes,
-      ipAddress: req.ip,
+      ipAddress: netAuth.clientIP || req.ip,
       networkAuthorized: true,
+      breaks: [],
+      isOnBreak: false,
+      totalBreakMinutes: 0,
     });
 
     res.status(200).json({ success: true, message: 'Checked in successfully', data: attendance });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Start Lunch / General Break
+// @route   POST /api/attendance/break/start
+// @access  Private/Employee
+const startBreak = async (req, res, next) => {
+  try {
+    const today = moment().format('YYYY-MM-DD');
+    const currentTime = new Date();
+    const netAuth = await checkNetworkAuth(req);
+
+    if (!netAuth.authorized) {
+      res.status(403);
+      throw new Error(netAuth.message || 'Network authorization required to log break.');
+    }
+
+    const record = await Attendance.findOne({ employee: req.user._id, date: today });
+    if (!record) {
+      res.status(400);
+      throw new Error('Please check in first before taking a break.');
+    }
+    if (record.checkOut) {
+      res.status(400);
+      throw new Error('You have already checked out for today.');
+    }
+    if (record.isOnBreak) {
+      res.status(400);
+      throw new Error('You are already on a break.');
+    }
+
+    const breakType = req.body.breakType || 'Lunch Break';
+
+    record.isOnBreak = true;
+    record.currentBreakStart = currentTime;
+    record.breaks.push({
+      breakType,
+      startTime: currentTime,
+      remarks: req.body.remarks || '',
+    });
+
+    await record.save();
+
+    res.status(200).json({
+      success: true,
+      message: `${breakType} started. Work hours are paused and will be deducted until break is ended.`,
+      data: record,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    End Break / Resume Work
+// @route   POST /api/attendance/break/end
+// @access  Private/Employee
+const endBreak = async (req, res, next) => {
+  try {
+    const today = moment().format('YYYY-MM-DD');
+    const currentTime = new Date();
+    const netAuth = await checkNetworkAuth(req);
+
+    if (!netAuth.authorized) {
+      res.status(403);
+      throw new Error(netAuth.message || 'Network authorization required to resume from break.');
+    }
+
+    const record = await Attendance.findOne({ employee: req.user._id, date: today });
+    if (!record) {
+      res.status(400);
+      throw new Error('No attendance record found for today.');
+    }
+    if (!record.isOnBreak) {
+      res.status(400);
+      throw new Error('You are not currently on a break.');
+    }
+
+    // Find the currently active break
+    const activeBreak = record.breaks.slice().reverse().find((b) => !b.endTime);
+    const breakStartTime = activeBreak?.startTime || record.currentBreakStart || currentTime;
+    const durationMinutes = Math.max(0, Math.floor(moment(currentTime).diff(moment(breakStartTime), 'minutes')));
+
+    if (activeBreak) {
+      activeBreak.endTime = currentTime;
+      activeBreak.duration = durationMinutes;
+    }
+
+    // Tally all completed break durations
+    const totalBreakMinutes = record.breaks.reduce((acc, curr) => acc + (curr.duration || 0), 0);
+
+    record.isOnBreak = false;
+    record.currentBreakStart = null;
+    record.totalBreakMinutes = totalBreakMinutes;
+
+    // Recalculate net working hours up to now (elapsed minus break time)
+    const grossMinutes = Math.max(0, Math.floor(moment(currentTime).diff(moment(record.checkIn), 'minutes')));
+    record.workingHours = Math.max(0, grossMinutes - totalBreakMinutes);
+
+    await record.save();
+
+    res.status(200).json({
+      success: true,
+      message: `Break ended successfully (${durationMinutes} mins deducted). Resumed duty!`,
+      data: record,
+    });
   } catch (error) {
     next(error);
   }
@@ -62,9 +166,9 @@ const checkOut = async (req, res, next) => {
   try {
     const today = moment().format('YYYY-MM-DD');
     const currentTime = new Date();
-    const isAuthorized = await checkNetworkAuth(req.ip);
+    const netAuth = await checkNetworkAuth(req);
 
-    if (!isAuthorized) {
+    if (!netAuth.authorized) {
       res.status(403);
       throw new Error('You are not connected to the authorized office network.');
     }
@@ -80,14 +184,33 @@ const checkOut = async (req, res, next) => {
       throw new Error('You have already checked out today.');
     }
 
-    const workingHoursMs = moment(currentTime).diff(moment(record.checkIn));
-    const workingHoursMinutes = Math.floor(moment.duration(workingHoursMs).asMinutes());
+    // If employee was still on break, automatically close the open break at checkout
+    if (record.isOnBreak) {
+      const activeBreak = record.breaks.slice().reverse().find((b) => !b.endTime);
+      const breakStartTime = activeBreak?.startTime || record.currentBreakStart || currentTime;
+      const durationMinutes = Math.max(0, Math.floor(moment(currentTime).diff(moment(breakStartTime), 'minutes')));
+
+      if (activeBreak) {
+        activeBreak.endTime = currentTime;
+        activeBreak.duration = durationMinutes;
+      }
+      record.isOnBreak = false;
+      record.currentBreakStart = null;
+    }
+
+    // Recalculate total completed break minutes
+    const totalBreakMinutes = record.breaks.reduce((acc, curr) => acc + (curr.duration || 0), 0);
+    record.totalBreakMinutes = totalBreakMinutes;
+
+    // Net working hours = Total Shift Duration MINUS Total Break Minutes
+    const grossShiftMinutes = Math.max(0, Math.floor(moment(currentTime).diff(moment(record.checkIn), 'minutes')));
+    const netWorkingHours = Math.max(0, grossShiftMinutes - totalBreakMinutes);
 
     record.checkOut = currentTime;
-    record.workingHours = workingHoursMinutes;
+    record.workingHours = netWorkingHours;
     await record.save();
 
-    res.status(200).json({ success: true, message: 'Checked out successfully', data: record });
+    res.status(200).json({ success: true, message: 'Checked out successfully. Shift completed.', data: record });
   } catch (error) {
     next(error);
   }
@@ -106,17 +229,27 @@ const getMyAttendanceStatus = async (req, res, next) => {
   }
 };
 
-// @desc    Get Network Status
+// @desc    Get Network Status (checks Wi-Fi Name and IP address)
 // @route   GET /api/attendance/network-status
-// @access  Private/Employee
+// @access  Public or Private
 const getNetworkStatus = async (req, res, next) => {
   try {
-    const isAuthorized = await checkNetworkAuth(req.ip);
-    if (isAuthorized) {
-      res.status(200).json({ authorized: true, networkName: 'DevBhoomi Office Network', ip: req.ip, message: 'Connected to authorized network.' });
-    } else {
-      res.status(200).json({ authorized: false, networkName: 'External Network', ip: req.ip, message: 'Not connected to authorized network.' });
-    }
+    const authResult = await checkNetworkAuth(req);
+    res.status(200).json({
+      authorized: authResult.authorized,
+      restrictionEnabled: authResult.restrictionEnabled,
+      matchedBy: authResult.matchedBy,
+      ipMatches: authResult.ipMatches,
+      wifiMatches: authResult.wifiMatches,
+      clientIP: authResult.clientIP,
+      clientWifiName: authResult.clientWifiName,
+      allowedIPs: authResult.allowedIPs,
+      allowedWifiNames: authResult.allowedWifiNames,
+      networkName: authResult.authorized
+        ? (authResult.clientWifiName || 'DevBhoomi Office Network')
+        : 'External / Unauthorized Network',
+      message: authResult.message,
+    });
   } catch (error) {
     next(error);
   }
@@ -140,6 +273,8 @@ const getMyAttendanceHistory = async (req, res, next) => {
     const totalLate = records.filter(r => r.late).length;
     const totalMinutes = records.reduce((acc, curr) => acc + (curr.workingHours || 0), 0);
     const totalHours = (totalMinutes / 60).toFixed(1);
+    const totalBreakMinutes = records.reduce((acc, curr) => acc + (curr.totalBreakMinutes || 0), 0);
+    const totalBreakHours = (totalBreakMinutes / 60).toFixed(1);
 
     res.status(200).json({
       success: true,
@@ -148,7 +283,9 @@ const getMyAttendanceHistory = async (req, res, next) => {
         totalPresent,
         totalLate,
         totalMinutes,
-        totalHours
+        totalHours,
+        totalBreakMinutes,
+        totalBreakHours,
       }
     });
   } catch (error) {
@@ -203,7 +340,7 @@ const getAllAttendances = async (req, res, next) => {
 // @access  Private/Admin
 const manualAttendance = async (req, res, next) => {
   try {
-    const { employeeId, date, checkIn, checkOut, late, attendanceType, remarks } = req.body;
+    const { employeeId, date, checkIn, checkOut, late, attendanceType, remarks, totalBreakMinutes } = req.body;
 
     if (!employeeId || !date) {
       res.status(400);
@@ -212,10 +349,13 @@ const manualAttendance = async (req, res, next) => {
 
     let record = await Attendance.findOne({ employee: employeeId, date });
 
+    const breakMins = totalBreakMinutes !== undefined ? Math.max(0, parseInt(totalBreakMinutes) || 0) : (record?.totalBreakMinutes || 0);
+
     let workingHours = 0;
     if (checkIn && checkOut) {
       const diffMs = moment(checkOut).diff(moment(checkIn));
-      workingHours = Math.max(0, Math.floor(moment.duration(diffMs).asMinutes()));
+      const grossMinutes = Math.max(0, Math.floor(moment.duration(diffMs).asMinutes()));
+      workingHours = Math.max(0, grossMinutes - breakMins);
     }
 
     if (record) {
@@ -224,6 +364,7 @@ const manualAttendance = async (req, res, next) => {
       if (late !== undefined) record.late = Boolean(late);
       if (attendanceType) record.attendanceType = attendanceType;
       if (remarks !== undefined) record.remarks = remarks;
+      record.totalBreakMinutes = breakMins;
       record.workingHours = workingHours;
       await record.save();
     } else {
@@ -235,6 +376,7 @@ const manualAttendance = async (req, res, next) => {
         late: Boolean(late),
         attendanceType: attendanceType || 'Present',
         remarks: remarks || 'Manually recorded by Admin',
+        totalBreakMinutes: breakMins,
         workingHours,
         networkAuthorized: true,
       });
@@ -245,7 +387,7 @@ const manualAttendance = async (req, res, next) => {
       action: 'MANUAL_ATTENDANCE',
       targetType: 'Attendance',
       targetId: record._id,
-      newValue: { employeeId, date, attendanceType },
+      newValue: { employeeId, date, attendanceType, totalBreakMinutes: breakMins, workingHours },
       ipAddress: req.ip,
       reason: remarks,
     });
@@ -286,6 +428,8 @@ const deleteAttendance = async (req, res, next) => {
 
 module.exports = {
   checkIn,
+  startBreak,
+  endBreak,
   checkOut,
   getMyAttendanceStatus,
   getMyAttendanceHistory,

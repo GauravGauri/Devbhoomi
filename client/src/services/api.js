@@ -10,12 +10,16 @@ const api = axios.create({
   withCredentials: true,
 });
 
-// Attach Authorization Bearer token from localStorage if present
+// Attach Authorization Bearer token and Wi-Fi SSID header from localStorage if present
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    }
+    const wifiName = localStorage.getItem('client_wifi_name');
+    if (wifiName) {
+      config.headers['x-wifi-name'] = wifiName;
     }
     return config;
   },

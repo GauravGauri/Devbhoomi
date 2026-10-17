@@ -33,6 +33,10 @@ const attendanceSettingsSchema = new mongoose.Schema({
     type: Boolean,
     default: true,
   },
+  allowedWifiNames: {
+    type: [String],
+    default: ['DevBhoomi-WiFi', 'Office-Network'],
+  },
   allowedIPs: {
     type: [String],
     default: ['127.0.0.1'], // Can include ranges or specific IPs

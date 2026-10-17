@@ -17,7 +17,40 @@ const attendanceSchema = new mongoose.Schema({
     type: Date,
   },
   workingHours: {
-    type: Number, // in minutes
+    type: Number, // in minutes (net worked minutes excluding breaks)
+    default: 0,
+  },
+  breaks: [
+    {
+      breakType: {
+        type: String,
+        default: 'Lunch Break',
+      },
+      startTime: {
+        type: Date,
+        required: true,
+      },
+      endTime: {
+        type: Date,
+      },
+      duration: {
+        type: Number, // in minutes
+        default: 0,
+      },
+      remarks: {
+        type: String,
+      },
+    }
+  ],
+  isOnBreak: {
+    type: Boolean,
+    default: false,
+  },
+  currentBreakStart: {
+    type: Date,
+  },
+  totalBreakMinutes: {
+    type: Number,
     default: 0,
   },
   attendanceType: {

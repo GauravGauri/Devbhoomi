@@ -12,6 +12,10 @@ import {
   RefreshCw,
   AlertCircle,
   Save,
+  Wifi,
+  Lock,
+  Info,
+  Check,
 } from 'lucide-react';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
@@ -24,6 +28,7 @@ const AdminSettings = () => {
   // General Settings
   const [settings, setSettings] = useState({
     networkRestrictionEnabled: false,
+    allowedWifiNames: ['DevBhoomi-WiFi'],
     allowedIPs: ['127.0.0.1'],
     officeStartTime: '09:30',
     officeEndTime: '18:30',
@@ -32,7 +37,9 @@ const AdminSettings = () => {
     autoCheckoutEnabled: true,
   });
 
+  const [newWifiInput, setNewWifiInput] = useState('');
   const [newIPInput, setNewIPInput] = useState('');
+  const [currentNetInfo, setCurrentNetInfo] = useState(null);
 
   // Departments
   const [departments, setDepartments] = useState([]);
@@ -75,10 +82,20 @@ const AdminSettings = () => {
     }
   };
 
+  const fetchCurrentNetwork = async () => {
+    try {
+      const { data } = await api.get('/attendance/network-status');
+      setCurrentNetInfo(data);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   useEffect(() => {
     fetchSettings();
     fetchDepartments();
     fetchHolidays();
+    fetchCurrentNetwork();
   }, []);
 
   const handleSettingChange = (e) => {
@@ -92,11 +109,37 @@ const AdminSettings = () => {
     try {
       await api.put('/admin/settings', settings);
       toast.success('System settings saved successfully');
+      fetchCurrentNetwork();
     } catch (error) {
       toast.error('Failed to save settings');
     } finally {
       setSaving(false);
     }
+  };
+
+  // Wi-Fi Add & Remove
+  const handleAddWifi = (e) => {
+    if (e) e.preventDefault();
+    if (!newWifiInput.trim()) return;
+    const wifi = newWifiInput.trim();
+    const currentList = settings.allowedWifiNames || [];
+    if (currentList.some(w => w.toLowerCase() === wifi.toLowerCase())) {
+      toast.error('Wi-Fi Network Name is already in allowlist');
+      return;
+    }
+    setSettings({
+      ...settings,
+      allowedWifiNames: [...currentList, wifi],
+    });
+    setNewWifiInput('');
+    toast.success(`Added Wi-Fi "${wifi}" to allowlist`);
+  };
+
+  const handleRemoveWifi = (wifiToRemove) => {
+    setSettings({
+      ...settings,
+      allowedWifiNames: (settings.allowedWifiNames || []).filter((w) => w !== wifiToRemove),
+    });
   };
 
   // IP Add & Remove
@@ -113,6 +156,7 @@ const AdminSettings = () => {
       allowedIPs: [...settings.allowedIPs, ip],
     });
     setNewIPInput('');
+    toast.success(`Added IP "${ip}" to allowlist`);
   };
 
   const handleRemoveIP = (ipToRemove) => {
@@ -120,6 +164,38 @@ const AdminSettings = () => {
       ...settings,
       allowedIPs: settings.allowedIPs.filter((ip) => ip !== ipToRemove),
     });
+  };
+
+  const handleQuickAddCurrentIP = () => {
+    if (!currentNetInfo?.clientIP) return;
+    const ip = currentNetInfo.clientIP;
+    if (settings.allowedIPs.includes(ip)) {
+      toast('Your current IP is already in allowlist', { icon: 'ℹ️' });
+      return;
+    }
+    setSettings({
+      ...settings,
+      allowedIPs: [...settings.allowedIPs, ip],
+    });
+    toast.success(`Added current IP "${ip}" to allowlist`);
+  };
+
+  const handleQuickAddCurrentWifi = () => {
+    const wifi = localStorage.getItem('client_wifi_name') || currentNetInfo?.clientWifiName;
+    if (!wifi) {
+      toast.error('No current Wi-Fi name detected. Please type in Option 1.');
+      return;
+    }
+    const currentList = settings.allowedWifiNames || [];
+    if (currentList.some(w => w.toLowerCase() === wifi.toLowerCase())) {
+      toast('Current Wi-Fi is already in allowlist', { icon: 'ℹ️' });
+      return;
+    }
+    setSettings({
+      ...settings,
+      allowedWifiNames: [...currentList, wifi],
+    });
+    toast.success(`Added current Wi-Fi "${wifi}" to allowlist`);
   };
 
   // Departments CRUD
@@ -327,16 +403,17 @@ const AdminSettings = () => {
         {activeTab === 'security' && (
           <div className="bg-white rounded-2xl shadow-xs border border-gray-200 p-8 space-y-6 max-w-3xl">
             <div>
-              <h3 className="text-base font-bold text-gray-900">Network Restriction & Office Wi-Fi Safeguard</h3>
+              <h3 className="text-base font-bold text-gray-900">Dual-Factor Office Network Gate (Wi-Fi & IP Security)</h3>
               <p className="text-xs text-gray-500">
-                When enabled, employees can only punch attendance when connected to authorized physical office IP addresses.
+                Configure specific authorized Wi-Fi network names and IP addresses. When enabled, all employee portal pages will run <strong>ONLY</strong> if the employee's connected Wi-Fi Name matches <strong>OR</strong> their IP address matches.
               </p>
             </div>
 
+            {/* Master Enforce Restriction Toggle */}
             <div className="pt-4 border-t border-gray-100 flex items-center justify-between bg-indigo-50/50 p-4 rounded-xl border border-indigo-100">
               <div>
                 <h4 className="text-sm font-bold text-indigo-900">Enforce Office Network Restriction</h4>
-                <p className="text-xs text-indigo-700">Blocks off-site and remote attendance marking outside authorized networks</p>
+                <p className="text-xs text-indigo-700">Strictly locks all employee portal pages unless connected to authorized Wi-Fi or IP</p>
               </div>
               <label className="relative inline-flex items-center cursor-pointer">
                 <input
@@ -350,45 +427,142 @@ const AdminSettings = () => {
               </label>
             </div>
 
-            <div className="space-y-4 pt-2">
-              <label className="block text-xs font-semibold text-gray-700">Authorized Public IP Addresses Allowlist</label>
+            {/* Live Detection Helper Card for Admin */}
+            <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+              <div>
+                <span className="font-bold text-gray-700 flex items-center">
+                  <Info className="w-3.5 h-3.5 mr-1 text-indigo-600" /> Current Admin Connection:
+                </span>
+                <span className="text-gray-500 mt-0.5 block font-mono">
+                  IP: <strong className="text-gray-800">{currentNetInfo?.clientIP || 'Detecting...'}</strong>
+                  {currentNetInfo?.clientWifiName ? ` • Wi-Fi: ${currentNetInfo.clientWifiName}` : ''}
+                </span>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={handleQuickAddCurrentIP}
+                  className="px-2.5 py-1 bg-white hover:bg-indigo-50 border border-gray-300 rounded text-indigo-700 font-semibold text-[11px]"
+                >
+                  + Add Current IP
+                </button>
+                <button
+                  type="button"
+                  onClick={handleQuickAddCurrentWifi}
+                  className="px-2.5 py-1 bg-white hover:bg-indigo-50 border border-gray-300 rounded text-indigo-700 font-semibold text-[11px]"
+                >
+                  + Add Current Wi-Fi
+                </button>
+              </div>
+            </div>
 
-              {/* Add IP Input */}
+            {/* OPTION 1: SPECIFIC WI-FI NETWORK NAMES */}
+            <div className="space-y-3 pt-2 p-5 bg-blue-50/30 rounded-xl border border-blue-100">
+              <div className="flex items-center space-x-2">
+                <Wifi className="w-4 h-4 text-blue-600" />
+                <label className="text-xs font-bold text-gray-900 uppercase tracking-wider">
+                  Option 1: Specific Authorized Wi-Fi Network Name(s) (SSID)
+                </label>
+              </div>
+              <p className="text-[11px] text-gray-500">
+                Employees connected to any of these Wi-Fi network names will automatically be granted access to all portal pages.
+              </p>
+
+              {/* Add Wi-Fi Name Input Form */}
+              <form onSubmit={handleAddWifi} className="flex gap-2">
+                <input
+                  type="text"
+                  value={newWifiInput}
+                  onChange={(e) => setNewWifiInput(e.target.value)}
+                  placeholder="e.g. DevBhoomi-WiFi, Office-5G, Staff-Network"
+                  className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none font-medium bg-white"
+                />
+                <Button type="submit" variant="secondary" size="sm" className="flex items-center">
+                  <Plus className="w-3.5 h-3.5 mr-1" /> Add Wi-Fi Name
+                </Button>
+              </form>
+
+              {/* Active Allowed Wi-Fi Names Pills */}
+              <div className="flex flex-wrap gap-2 pt-1">
+                {(settings.allowedWifiNames || []).length === 0 ? (
+                  <span className="text-xs text-gray-400 italic">No specific Wi-Fi names configured yet.</span>
+                ) : (
+                  (settings.allowedWifiNames || []).map((wifi) => (
+                    <span
+                      key={wifi}
+                      className="inline-flex items-center px-3 py-1 rounded-lg text-xs font-semibold bg-blue-100/70 text-blue-800 border border-blue-200 shadow-2xs"
+                    >
+                      <Wifi className="w-3 h-3 mr-1 text-blue-600" />
+                      {wifi}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveWifi(wifi)}
+                        className="ml-2 text-blue-400 hover:text-red-600 transition-colors"
+                        title="Remove Wi-Fi Name"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* OPTION 2: SPECIFIC IP ADDRESSES */}
+            <div className="space-y-3 pt-2 p-5 bg-amber-50/30 rounded-xl border border-amber-100">
+              <div className="flex items-center space-x-2">
+                <Lock className="w-4 h-4 text-amber-600" />
+                <label className="text-xs font-bold text-gray-900 uppercase tracking-wider">
+                  Option 2: Specific Authorized IP Address(es) Allowlist
+                </label>
+              </div>
+              <p className="text-[11px] text-gray-500">
+                Employees connecting from any of these specific local or public office IP addresses will be granted access.
+              </p>
+
+              {/* Add IP Input Form */}
               <form onSubmit={handleAddIP} className="flex gap-2">
                 <input
                   type="text"
                   value={newIPInput}
                   onChange={(e) => setNewIPInput(e.target.value)}
-                  placeholder="e.g. 192.168.1.1, 10.194.16.2"
-                  className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none font-mono"
+                  placeholder="e.g. 127.0.0.1, 192.168.1.1, 10.194.16.2"
+                  className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none font-mono bg-white"
                 />
                 <Button type="submit" variant="secondary" size="sm" className="flex items-center">
                   <Plus className="w-3.5 h-3.5 mr-1" /> Add IP
                 </Button>
               </form>
 
-              {/* Pill list of active allowed IPs */}
-              <div className="flex flex-wrap gap-2 pt-2">
-                {settings.allowedIPs.map((ip) => (
-                  <span
-                    key={ip}
-                    className="inline-flex items-center px-3 py-1 rounded-lg text-xs font-mono font-semibold bg-gray-100 text-gray-800 border border-gray-200"
-                  >
-                    {ip}
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveIP(ip)}
-                      className="ml-2 text-gray-400 hover:text-red-600 transition-colors"
-                      title="Remove IP"
+              {/* Active Allowed IPs Pills */}
+              <div className="flex flex-wrap gap-2 pt-1">
+                {(settings.allowedIPs || []).length === 0 ? (
+                  <span className="text-xs text-gray-400 italic">No specific IP addresses configured yet.</span>
+                ) : (
+                  (settings.allowedIPs || []).map((ip) => (
+                    <span
+                      key={ip}
+                      className="inline-flex items-center px-3 py-1 rounded-lg text-xs font-mono font-semibold bg-gray-100 text-gray-800 border border-gray-200"
                     >
-                      ×
-                    </button>
-                  </span>
-                ))}
+                      {ip}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveIP(ip)}
+                        className="ml-2 text-gray-400 hover:text-red-600 transition-colors"
+                        title="Remove IP"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))
+                )}
               </div>
             </div>
 
-            <div className="flex justify-end pt-4 border-t border-gray-100">
+            <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+              <span className="text-xs text-gray-500 font-medium">
+                Matches if Wi-Fi Name <strong className="text-gray-700">OR</strong> IP Address matches.
+              </span>
               <Button onClick={handleSaveSettings} isLoading={saving} className="bg-indigo-600 hover:bg-indigo-700 text-white flex items-center">
                 <Save className="w-4 h-4 mr-1.5" /> Save Network Security Settings
               </Button>

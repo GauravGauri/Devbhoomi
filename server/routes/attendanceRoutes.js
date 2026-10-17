@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const {
   checkIn,
+  startBreak,
+  endBreak,
   checkOut,
   getMyAttendanceStatus,
   getMyAttendanceHistory,
@@ -13,6 +15,8 @@ const {
 const { protect, admin } = require('../middleware/authMiddleware');
 
 router.post('/check-in', protect, checkIn);
+router.post('/break/start', protect, startBreak);
+router.post('/break/end', protect, endBreak);
 router.post('/check-out', protect, checkOut);
 router.get('/me', protect, getMyAttendanceStatus);
 router.get('/my-history', protect, getMyAttendanceHistory);
