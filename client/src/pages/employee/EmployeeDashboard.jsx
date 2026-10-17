@@ -56,6 +56,19 @@ const EmployeeDashboard = () => {
 
   const fetchAttendanceAndNetwork = async () => {
     try {
+      const netCheck = await api.get('/attendance/network-status');
+      const allowed = netCheck.data?.allowedWifiNames || [];
+      const storedWifi = localStorage.getItem('client_wifi_name');
+      const isStoredValid = storedWifi && allowed.some((w) => w.toLowerCase() === storedWifi.toLowerCase());
+
+      if (allowed.length > 0 && !isStoredValid) {
+        if (allowed.length === 1) {
+          localStorage.setItem('client_wifi_name', allowed[0]);
+        } else {
+          localStorage.removeItem('client_wifi_name');
+        }
+      }
+
       const [attRes, netRes] = await Promise.all([
         api.get('/attendance/me'),
         api.get('/attendance/network-status'),

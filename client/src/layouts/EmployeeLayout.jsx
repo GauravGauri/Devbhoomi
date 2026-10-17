@@ -36,6 +36,28 @@ const EmployeeLayout = ({ children }) => {
     if (!quiet) setNetworkLoading(true);
     try {
       const { data } = await api.get('/attendance/network-status');
+
+      // Auto-sync stale Wi-Fi name if Admin changed allowed Wi-Fi names:
+      const storedWifi = localStorage.getItem('client_wifi_name');
+      const allowed = data.allowedWifiNames || [];
+      const isStoredValid = storedWifi && allowed.some((w) => w.toLowerCase() === storedWifi.toLowerCase());
+
+      if (allowed.length > 0 && !isStoredValid) {
+        if (allowed.length === 1) {
+          // Exactly 1 allowed Wi-Fi configured by Admin: auto-sync and re-verify
+          const autoWifi = allowed[0];
+          localStorage.setItem('client_wifi_name', autoWifi);
+          setWifiInput(autoWifi);
+          const recheck = await api.get('/attendance/network-status');
+          setNetworkStatus(recheck.data);
+          return;
+        } else {
+          // Remove outdated/deleted Wi-Fi name so it doesn't linger
+          localStorage.removeItem('client_wifi_name');
+          setWifiInput('');
+        }
+      }
+
       setNetworkStatus(data);
     } catch (error) {
       console.error('Failed to query network status:', error);
