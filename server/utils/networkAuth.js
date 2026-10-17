@@ -84,13 +84,28 @@ const checkNetworkAuth = async (req) => {
     }
   }
 
+  const hasConfiguredWifi = allowedWifiNames.length > 0;
+  const hasConfiguredIP = allowedIPs.length > 0;
+
   // Authorized if specific Wi-Fi name matches OR IP address matches
+  // If only IP is configured, authorized depends on IP
+  // If only Wi-Fi is configured, authorized depends on Wi-Fi
+  // If both are configured, authorized if either matches
   const authorized = Boolean(ipMatches || wifiMatches);
   const matchedBy = ipMatches && wifiMatches ? 'both' : ipMatches ? 'ip' : wifiMatches ? 'wifi' : null;
+
+  let failMessage = 'Office Wi-Fi not connected: You must connect to the authorized office Wi-Fi network or IP address.';
+  if (hasConfiguredIP && !hasConfiguredWifi) {
+    failMessage = `Office Wi-Fi not connected: Your connection IP (${clientIP}) does not match the office Wi-Fi IP address set by Admin.`;
+  } else if (hasConfiguredWifi && !hasConfiguredIP) {
+    failMessage = `Office Wi-Fi not connected: Your Wi-Fi name ("${clientWifiName || 'Unknown'}") does not match the office Wi-Fi name set by Admin.`;
+  }
 
   return {
     authorized,
     restrictionEnabled: true,
+    hasConfiguredWifi,
+    hasConfiguredIP,
     ipMatches,
     wifiMatches,
     matchedBy,
@@ -99,8 +114,8 @@ const checkNetworkAuth = async (req) => {
     allowedIPs,
     allowedWifiNames,
     message: authorized
-      ? `Office Wi-Fi connected (${matchedBy === 'wifi' ? `Wi-Fi: ${clientWifiName}` : matchedBy === 'ip' ? `IP: ${clientIP}` : `Wi-Fi: ${clientWifiName} & IP: ${clientIP}`}).`
-      : 'Office Wi-Fi not connected: You must connect to the authorized office Wi-Fi network or IP address.',
+      ? `Office Wi-Fi connected (${matchedBy === 'wifi' ? `Wi-Fi: ${clientWifiName}` : matchedBy === 'ip' ? `Office IP: ${clientIP}` : `Wi-Fi: ${clientWifiName} & IP: ${clientIP}`}).`
+      : failMessage,
   };
 };
 
