@@ -8,7 +8,15 @@ const loginUser = async (req, res, next) => {
   try {
     const { username, password } = req.body;
 
-    const user = await User.findOne({ username });
+    if (!username || !password) {
+      res.status(400);
+      throw new Error('Please provide username and password');
+    }
+
+    const cleanUsername = username.trim();
+    const user = await User.findOne({
+      username: { $regex: new RegExp(`^${cleanUsername.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') }
+    });
 
     if (user && (await user.matchPassword(password))) {
       if (user.status !== 'Active') {
@@ -48,11 +56,17 @@ const loginUser = async (req, res, next) => {
 // @access  Public
 const loginAdmin = async (req, res, next) => {
   try {
-    const { username, password } = req.body; // Can be username or email
+    const { username, password } = req.body;
 
-    // Check by username or email
+    if (!username || !password) {
+      res.status(400);
+      throw new Error('Please provide admin username and password');
+    }
+
+    const cleanUsername = username.trim();
+    // Strictly authenticate by username only
     const user = await User.findOne({ 
-      $or: [{ username }, { email: username }] 
+      username: { $regex: new RegExp(`^${cleanUsername.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } 
     });
 
     if (user && (await user.matchPassword(password))) {

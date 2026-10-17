@@ -38,15 +38,9 @@ const Login = () => {
     }
   };
 
-  const handleFillDemo = () => {
-    setValue('username', 'Gaurii');
-    setValue('password', 'Employee123!');
-    toast.success('Test employee credentials autofilled!');
-  };
-
   const handleForgotPassword = (e) => {
     e.preventDefault();
-    toast('Please contact your HR administrator to reset your password via the Employee Directory.', {
+    toast('Please contact your administrator to reset your employee password.', {
       icon: 'ℹ️',
       duration: 6000,
     });
@@ -70,21 +64,6 @@ const Login = () => {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white px-4 py-8 shadow-xl shadow-blue-900/5 sm:rounded-2xl sm:px-10 border border-gray-100">
-          {/* Quick Demo Autofill Pill */}
-          <div className="mb-6 p-3 rounded-xl bg-blue-50/60 border border-blue-100 flex items-center justify-between text-xs">
-            <div>
-              <span className="font-bold text-blue-900">Demo Account</span>
-              <p className="text-blue-700 text-[11px]">User: Gaurii / Pass: Employee123!</p>
-            </div>
-            <button
-              type="button"
-              onClick={handleFillDemo}
-              className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg text-xs transition-colors shadow-xs"
-            >
-              Fill In
-            </button>
-          </div>
-
           <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
             <Input
               label="Username"

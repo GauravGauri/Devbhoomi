@@ -11,7 +11,7 @@ import { Button } from '../../components/ui/Button';
 import { ShieldCheck } from 'lucide-react';
 
 const schema = yup.object().shape({
-  username: yup.string().required('Username or Email is required'),
+  username: yup.string().required('Username is required'),
   password: yup.string().required('Password is required'),
 });
 
@@ -38,15 +38,9 @@ const AdminLogin = () => {
     }
   };
 
-  const handleFillAdminDemo = () => {
-    setValue('username', 'admin');
-    setValue('password', 'SecureAdminPassword123!');
-    toast.success('Admin credentials autofilled!');
-  };
-
   const handleForgotPassword = (e) => {
     e.preventDefault();
-    toast('Default root admin credentials can be reset using: npm run create-admin in the server directory.', {
+    toast('Admin credentials can be reset using: npm run create-admin in the server directory.', {
       icon: '🛡️',
       duration: 6000,
     });
@@ -70,32 +64,18 @@ const AdminLogin = () => {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-gray-800 px-4 py-8 shadow-2xl sm:rounded-2xl sm:px-10 border border-gray-700">
-          {/* Quick Demo Autofill Pill */}
-          <div className="mb-6 p-3 rounded-xl bg-indigo-950/70 border border-indigo-700/50 flex items-center justify-between text-xs">
-            <div>
-              <span className="font-bold text-indigo-300">Default Admin Credentials</span>
-              <p className="text-gray-400 text-[11px]">User: admin / Pass: SecureAdminPassword123!</p>
-            </div>
-            <button
-              type="button"
-              onClick={handleFillAdminDemo}
-              className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-lg text-xs transition-colors shadow-xs"
-            >
-              Fill In
-            </button>
-          </div>
-
           <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
             <div className="space-y-1">
               <label className="block text-sm font-medium text-gray-300 mb-1.5">
-                Username or Email
+                Username
               </label>
               <input
                 type="text"
+                autoComplete="username"
                 className={`w-full rounded-lg border bg-gray-900/50 px-4 py-2.5 text-white placeholder-gray-500 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none transition-colors ${
                   errors.username ? 'border-red-500' : 'border-gray-700'
                 }`}
-                placeholder="admin@devbhoomi.local"
+                placeholder="Enter admin username"
                 {...register('username')}
               />
               {errors.username && <p className="text-sm text-red-500 mt-1">{errors.username.message}</p>}
