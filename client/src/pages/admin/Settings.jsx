@@ -16,9 +16,12 @@ import {
   Lock,
   Info,
   Check,
+  MapPin,
+  Navigation,
 } from 'lucide-react';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
+import { getCurrentLocation } from '../../services/locationService';
 
 const AdminSettings = () => {
   const [activeTab, setActiveTab] = useState('attendance'); // 'attendance' | 'security' | 'departments' | 'holidays'
@@ -203,6 +206,24 @@ const AdminSettings = () => {
       allowedWifiNames: [...currentList, wifi],
     });
     toast.success(`Added current Wi-Fi "${wifi}" to allowlist`);
+  };
+
+  const [capturingLocation, setCapturingLocation] = useState(false);
+  const handleCaptureCurrentLocation = async () => {
+    setCapturingLocation(true);
+    try {
+      const coords = await getCurrentLocation(true);
+      setSettings((prev) => ({
+        ...prev,
+        officeLatitude: coords.latitude,
+        officeLongitude: coords.longitude,
+      }));
+      toast.success(`Captured Office Location! Lat: ${coords.latitude.toFixed(6)}, Lon: ${coords.longitude.toFixed(6)} (Accuracy: ~${Math.round(coords.accuracy)}m)`);
+    } catch (err) {
+      toast.error(err.message || 'Failed to capture GPS location');
+    } finally {
+      setCapturingLocation(false);
+    }
   };
 
   // Departments CRUD
@@ -569,12 +590,152 @@ const AdminSettings = () => {
               </div>
             </div>
 
+            {/* OPTION 3: OFFICE GPS GEOFENCING & AUTO-BREAK BOUNDARY */}
+            <div className="space-y-4 pt-2 p-5 bg-emerald-50/40 rounded-xl border border-emerald-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <MapPin className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+                  <div>
+                    <label className="text-xs font-bold text-gray-900 uppercase tracking-wider block">
+                      Option 3: Office GPS Geofencing & Boundary Security
+                    </label>
+                    <span className="text-[11px] text-gray-500">
+                      Immune to dynamic router IPs and Wi-Fi changes. Strictly verifies employee physical presence inside the office building.
+                    </span>
+                  </div>
+                </div>
+
+                <label className="relative inline-flex items-center cursor-pointer flex-shrink-0">
+                  <input
+                    type="checkbox"
+                    name="geofencingEnabled"
+                    checked={settings.geofencingEnabled}
+                    onChange={handleSettingChange}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                </label>
+              </div>
+
+              {/* 1-Click GPS Capture Button */}
+              <div className="bg-white p-4 rounded-xl border border-emerald-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
+                <div>
+                  <h5 className="text-xs font-bold text-emerald-900 flex items-center">
+                    <Navigation className="w-3.5 h-3.5 mr-1 text-emerald-600" /> Auto-Capture Office GPS Location
+                  </h5>
+                  <p className="text-[11px] text-gray-500 mt-0.5">
+                    Sit inside your office and click this button. Your browser will auto-fill your exact office coordinates!
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleCaptureCurrentLocation}
+                  isLoading={capturingLocation}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center shadow-xs flex-shrink-0"
+                >
+                  <MapPin className="w-3.5 h-3.5 mr-1" /> 📍 Capture Current Location
+                </Button>
+              </div>
+
+              {/* Coordinates & Radius Inputs */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Office Latitude</label>
+                  <input
+                    type="number"
+                    step="any"
+                    name="officeLatitude"
+                    value={settings.officeLatitude || ''}
+                    onChange={handleSettingChange}
+                    placeholder="e.g. 28.613939"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-xs font-mono bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Office Longitude</label>
+                  <input
+                    type="number"
+                    step="any"
+                    name="officeLongitude"
+                    value={settings.officeLongitude || ''}
+                    onChange={handleSettingChange}
+                    placeholder="e.g. 77.209021"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-xs font-mono bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Allowed Radius (Meters)</label>
+                  <input
+                    type="number"
+                    name="geofenceRadiusMeters"
+                    value={settings.geofenceRadiusMeters || 100}
+                    onChange={handleSettingChange}
+                    placeholder="100"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-xs font-mono bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  />
+                  <span className="text-[10px] text-gray-400 mt-0.5 block">Recommended: 100 - 150 meters</span>
+                </div>
+              </div>
+
+              {/* Office Location Name */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Office Premise Label</label>
+                <input
+                  type="text"
+                  name="officeLocationName"
+                  value={settings.officeLocationName || ''}
+                  onChange={handleSettingChange}
+                  placeholder="e.g. DevBhoomi Head Office, Dehradun"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-xs bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                />
+              </div>
+
+              {/* Auto-Break Toggle */}
+              <div className="pt-2 border-t border-emerald-100 flex items-center justify-between">
+                <div>
+                  <h5 className="text-xs font-bold text-gray-800">Auto-Break when leaving office boundary</h5>
+                  <p className="text-[11px] text-gray-500">
+                    If an employee on duty steps outside the office boundary, automatically pause working hours and log an automatic break until they return.
+                  </p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer flex-shrink-0">
+                  <input
+                    type="checkbox"
+                    name="autoBreakOutOfOffice"
+                    checked={settings.autoBreakOutOfOffice}
+                    onChange={handleSettingChange}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                </label>
+              </div>
+
+              {/* Google Maps link preview if coordinates configured */}
+              {settings.officeLatitude && settings.officeLongitude ? (
+                <div className="flex items-center justify-between bg-emerald-100/60 p-2.5 rounded-lg text-xs text-emerald-900">
+                  <span className="font-semibold flex items-center">
+                    <CheckCircle2 className="w-4 h-4 mr-1.5 text-emerald-600" />
+                    Office Pin Active: {Number(settings.officeLatitude).toFixed(5)}, {Number(settings.officeLongitude).toFixed(5)} ({settings.geofenceRadiusMeters || 100}m radius)
+                  </span>
+                  <a
+                    href={`https://www.google.com/maps?q=${settings.officeLatitude},${settings.officeLongitude}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-emerald-700 underline font-bold hover:text-emerald-800"
+                  >
+                    View on Google Maps ↗
+                  </a>
+                </div>
+              ) : null}
+            </div>
+
             <div className="flex items-center justify-between pt-4 border-t border-gray-100">
               <span className="text-xs text-gray-500 font-medium">
-                Matches if Wi-Fi Name <strong className="text-gray-700">OR</strong> IP Address matches.
+                Saves Wi-Fi, IP, and Office GPS Geofencing rules.
               </span>
               <Button onClick={handleSaveSettings} isLoading={saving} className="bg-indigo-600 hover:bg-indigo-700 text-white flex items-center">
-                <Save className="w-4 h-4 mr-1.5" /> Save Network Security Settings
+                <Save className="w-4 h-4 mr-1.5" /> Save Security & Location Settings
               </Button>
             </div>
           </div>

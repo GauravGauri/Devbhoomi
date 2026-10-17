@@ -10,7 +10,9 @@ const {
   getNetworkStatus,
   getAllAttendances,
   manualAttendance,
-  deleteAttendance
+  deleteAttendance,
+  verifyLocationAndAutoBreak,
+  getGeoStatus,
 } = require('../controllers/attendanceController');
 const { protect, admin } = require('../middleware/authMiddleware');
 
@@ -18,6 +20,8 @@ router.post('/check-in', protect, checkIn);
 router.post('/break/start', protect, startBreak);
 router.post('/break/end', protect, endBreak);
 router.post('/check-out', protect, checkOut);
+router.post('/verify-location', protect, verifyLocationAndAutoBreak);
+router.get('/geo-status', protect, getGeoStatus);
 router.get('/me', protect, getMyAttendanceStatus);
 router.get('/my-history', protect, getMyAttendanceHistory);
 router.get('/network-status', protect, getNetworkStatus);

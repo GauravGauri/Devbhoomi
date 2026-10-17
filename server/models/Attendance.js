@@ -40,6 +40,20 @@ const attendanceSchema = new mongoose.Schema({
       remarks: {
         type: String,
       },
+      isAutomatic: {
+        type: Boolean,
+        default: false,
+      },
+      startLocation: {
+        latitude: Number,
+        longitude: Number,
+        distanceMeters: Number,
+      },
+      endLocation: {
+        latitude: Number,
+        longitude: Number,
+        distanceMeters: Number,
+      },
     }
   ],
   isOnBreak: {
@@ -84,7 +98,17 @@ const attendanceSchema = new mongoose.Schema({
   networkAuthorized: {
     type: Boolean,
     default: true,
-  }
+  },
+  checkInLocation: {
+    latitude: Number,
+    longitude: Number,
+    distanceMeters: Number,
+  },
+  checkOutLocation: {
+    latitude: Number,
+    longitude: Number,
+    distanceMeters: Number,
+  },
 }, {
   timestamps: true,
 });

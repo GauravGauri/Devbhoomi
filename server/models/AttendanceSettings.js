@@ -44,7 +44,32 @@ const attendanceSettingsSchema = new mongoose.Schema({
   autoCheckoutEnabled: {
     type: Boolean,
     default: true,
-  }
+  },
+  // GPS Geofencing Configuration
+  geofencingEnabled: {
+    type: Boolean,
+    default: true,
+  },
+  officeLatitude: {
+    type: Number,
+    default: 0,
+  },
+  officeLongitude: {
+    type: Number,
+    default: 0,
+  },
+  geofenceRadiusMeters: {
+    type: Number,
+    default: 100, // 100 meters boundary
+  },
+  officeLocationName: {
+    type: String,
+    default: 'DevBhoomi Head Office',
+  },
+  autoBreakOutOfOffice: {
+    type: Boolean,
+    default: true, // Automatically start a break if employee is on duty and steps outside boundary
+  },
 }, {
   timestamps: true,
 });

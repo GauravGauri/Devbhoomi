@@ -20,17 +20,22 @@ import {
   Timer,
   CheckCircle2,
   RefreshCw,
+  MapPin,
+  Navigation,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
+import { getCurrentLocation } from '../../services/locationService';
 
 const EmployeeDashboard = () => {
   const { user } = useContext(AuthContext);
   const [attendance, setAttendance] = useState(null);
   const [networkStatus, setNetworkStatus] = useState({ authorized: true, networkName: 'Connecting...', clientIP: '' });
+  const [geoStatus, setGeoStatus] = useState(null);
   const [loading, setLoading] = useState(false);
   const [breakLoading, setBreakLoading] = useState(false);
+  const [geoRefreshing, setGeoRefreshing] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   
   // Real-time timers
@@ -54,8 +59,35 @@ const EmployeeDashboard = () => {
     return () => clearInterval(timer);
   }, [attendance?.isOnBreak, attendance?.currentBreakStart]);
 
-  const fetchAttendanceAndNetwork = async () => {
+  const fetchAttendanceAndNetwork = async (quiet = true) => {
+    if (!quiet) setGeoRefreshing(true);
     try {
+      // 1. Fetch current GPS location
+      const coords = await getCurrentLocation(false).catch(() => null);
+
+      // 2. Call verify-location: checks boundary and triggers auto-break if employee is on duty & outside
+      let verifyRes = null;
+      try {
+        verifyRes = await api.post('/attendance/verify-location', {
+          latitude: coords?.latitude,
+          longitude: coords?.longitude,
+        });
+      } catch (err) {
+        console.error('Verify location failed:', err);
+      }
+
+      if (verifyRes?.data?.geoAuth) {
+        setGeoStatus(verifyRes.data.geoAuth);
+      }
+
+      if (verifyRes?.data?.autoBreakTriggered) {
+        toast.error('You are outside the office boundary! Working hours paused and automatic break started.', {
+          duration: 8000,
+          icon: '📍',
+        });
+      }
+
+      // 3. Network status fallback
       const netCheck = await api.get('/attendance/network-status');
       const allowed = netCheck.data?.allowedWifiNames || [];
       const storedWifi = localStorage.getItem('client_wifi_name');
@@ -73,17 +105,38 @@ const EmployeeDashboard = () => {
         api.get('/attendance/me'),
         api.get('/attendance/network-status'),
       ]);
-      setAttendance(attRes.data.data);
+
+      // If verify-location updated attendance record (e.g. auto-break), use it
+      setAttendance(verifyRes?.data?.attendance || attRes.data.data);
       if (netRes.data) {
         setNetworkStatus(netRes.data);
       }
     } catch (error) {
       console.error(error);
+    } finally {
+      if (!quiet) setGeoRefreshing(false);
     }
   };
 
   useEffect(() => {
-    fetchAttendanceAndNetwork();
+    fetchAttendanceAndNetwork(false);
+
+    // Re-verify location and auto-break every 30 seconds
+    const interval = setInterval(() => {
+      fetchAttendanceAndNetwork(true);
+    }, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Check location & trigger auto-break whenever employee opens portal or switches to tab
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        fetchAttendanceAndNetwork(true);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
   }, []);
 
   // Compute live net working time (gross elapsed minus completed breaks minus active break)
@@ -119,17 +172,41 @@ const EmployeeDashboard = () => {
   const handleCheckIn = async () => {
     setLoading(true);
     try {
-      // Automatically re-verify live network status
-      const netRes = await api.get('/attendance/network-status');
-      if (netRes.data) setNetworkStatus(netRes.data);
+      // 1. Acquire fresh GPS location
+      const coords = await getCurrentLocation(true).catch(() => null);
 
-      if (netRes.data?.restrictionEnabled && !netRes.data?.authorized) {
-        toast.error('Office Wi-Fi not connected. Please connect to authorized office Wi-Fi or office network to punch in.');
+      if (!coords && geoStatus?.geofenceEnabled && geoStatus?.officeSet) {
+        toast.error('Device GPS location is required to mark attendance. Please enable location access in browser.');
+        setLoading(false);
         return;
       }
 
-      const { data } = await api.post('/attendance/check-in');
+      // 2. Pre-verify boundary
+      const verify = await api.post('/attendance/verify-location', {
+        latitude: coords?.latitude,
+        longitude: coords?.longitude,
+      });
+      if (verify.data?.geoAuth) setGeoStatus(verify.data.geoAuth);
+
+      if (verify.data?.geoAuth?.geofenceEnabled && verify.data?.geoAuth?.officeSet && !verify.data?.geoAuth?.withinGeofence) {
+        toast.error(`Outside office boundary (${verify.data.geoAuth.distanceMeters}m away from ${verify.data.geoAuth.officeLocation?.name || 'Office'}). You must be inside ${verify.data.geoAuth.allowedRadiusMeters}m to punch in.`);
+        setLoading(false);
+        return;
+      }
+
+      // Fallback check if geofencing is not configured but network restriction is enabled
+      if (!verify.data?.geoAuth?.geofenceEnabled && networkStatus?.restrictionEnabled && !networkStatus?.authorized) {
+        toast.error('Office Wi-Fi not connected. Please connect to authorized office Wi-Fi or office network to punch in.');
+        setLoading(false);
+        return;
+      }
+
+      const { data } = await api.post('/attendance/check-in', {
+        latitude: coords?.latitude,
+        longitude: coords?.longitude,
+      });
       setAttendance(data.data);
+      if (data.geoAuth) setGeoStatus(data.geoAuth);
       toast.success('Punched in successfully! Have a productive day.');
     } catch (error) {
       toast.error(error.response?.data?.message || 'Check-in failed');
@@ -141,19 +218,15 @@ const EmployeeDashboard = () => {
   const handleStartBreak = async () => {
     setBreakLoading(true);
     try {
-      // Automatically re-verify live network status
-      const netRes = await api.get('/attendance/network-status');
-      if (netRes.data) setNetworkStatus(netRes.data);
-
-      if (netRes.data?.restrictionEnabled && !netRes.data?.authorized) {
-        toast.error('Office Wi-Fi not connected. Please connect to authorized office Wi-Fi to start break.');
-        return;
-      }
+      const coords = await getCurrentLocation(true).catch(() => null);
 
       const { data } = await api.post('/attendance/break/start', {
         breakType: 'Lunch Break',
+        latitude: coords?.latitude,
+        longitude: coords?.longitude,
       });
       setAttendance(data.data);
+      if (data.geoAuth) setGeoStatus(data.geoAuth);
       toast.success('Lunch break started. Work hours are paused and deducted!');
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to start break');
@@ -165,17 +238,28 @@ const EmployeeDashboard = () => {
   const handleEndBreak = async () => {
     setBreakLoading(true);
     try {
-      // Automatically re-verify live network status
-      const netRes = await api.get('/attendance/network-status');
-      if (netRes.data) setNetworkStatus(netRes.data);
+      // 1. Acquire fresh GPS location
+      const coords = await getCurrentLocation(true).catch(() => null);
 
-      if (netRes.data?.restrictionEnabled && !netRes.data?.authorized) {
-        toast.error('Office Wi-Fi not connected. Please connect to authorized office Wi-Fi to resume from break.');
+      // 2. Pre-verify boundary: employee must return inside office premise to resume work
+      const verify = await api.post('/attendance/verify-location', {
+        latitude: coords?.latitude,
+        longitude: coords?.longitude,
+      });
+      if (verify.data?.geoAuth) setGeoStatus(verify.data.geoAuth);
+
+      if (verify.data?.geoAuth?.geofenceEnabled && verify.data?.geoAuth?.officeSet && !verify.data?.geoAuth?.withinGeofence) {
+        toast.error(`Cannot resume work: You are outside office boundary (${verify.data.geoAuth.distanceMeters}m away). Return inside office premise to resume duty.`);
+        setBreakLoading(false);
         return;
       }
 
-      const { data } = await api.post('/attendance/break/end');
+      const { data } = await api.post('/attendance/break/end', {
+        latitude: coords?.latitude,
+        longitude: coords?.longitude,
+      });
       setAttendance(data.data);
+      if (data.geoAuth) setGeoStatus(data.geoAuth);
       toast.success('Break ended. Resumed duty, welcome back!');
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to end break');
@@ -186,23 +270,41 @@ const EmployeeDashboard = () => {
 
   const handleCheckOut = async () => {
     if (attendance?.isOnBreak) {
-      if (!window.confirm('You are currently on break. Checking out now will end and deduct your lunch break. Proceed?')) {
+      if (!window.confirm('You are currently on break. Checking out now will end and deduct your break. Proceed?')) {
         return;
       }
     }
     setLoading(true);
     try {
-      // Automatically re-verify live network status before checkout
-      const netRes = await api.get('/attendance/network-status');
-      if (netRes.data) setNetworkStatus(netRes.data);
+      // 1. Acquire fresh GPS location
+      const coords = await getCurrentLocation(true).catch(() => null);
 
-      if (netRes.data?.restrictionEnabled && !netRes.data?.authorized) {
-        toast.error('Office Wi-Fi not connected. Please connect to authorized office Wi-Fi or office network to punch out.');
+      // 2. Pre-verify boundary
+      const verify = await api.post('/attendance/verify-location', {
+        latitude: coords?.latitude,
+        longitude: coords?.longitude,
+      });
+      if (verify.data?.geoAuth) setGeoStatus(verify.data.geoAuth);
+
+      if (verify.data?.geoAuth?.geofenceEnabled && verify.data?.geoAuth?.officeSet && !verify.data?.geoAuth?.withinGeofence) {
+        toast.error(`Cannot punch out: Outside office boundary (${verify.data.geoAuth.distanceMeters}m away). You must be physically inside office premise to punch out.`);
+        setLoading(false);
         return;
       }
 
-      const { data } = await api.post('/attendance/check-out');
+      // Fallback check if geofencing is not configured but network restriction is enabled
+      if (!verify.data?.geoAuth?.geofenceEnabled && networkStatus?.restrictionEnabled && !networkStatus?.authorized) {
+        toast.error('Office Wi-Fi not connected. Please connect to authorized office Wi-Fi or office network to punch out.');
+        setLoading(false);
+        return;
+      }
+
+      const { data } = await api.post('/attendance/check-out', {
+        latitude: coords?.latitude,
+        longitude: coords?.longitude,
+      });
       setAttendance(data.data);
+      if (data.geoAuth) setGeoStatus(data.geoAuth);
       toast.success('Punched out successfully! Work session saved.');
     } catch (error) {
       toast.error(error.response?.data?.message || 'Check-out failed');
@@ -230,6 +332,11 @@ const EmployeeDashboard = () => {
   // Total break duration including active break
   const totalBreakDeducted = (attendance?.totalBreakMinutes || 0) + (attendance?.isOnBreak ? Math.floor(activeBreakElapsedSeconds / 60) : 0);
 
+  // Active break info
+  const activeBreak = attendance?.breaks?.slice()?.reverse()?.find((b) => !b.endTime);
+  const isAutoBreak = Boolean(attendance?.isOnBreak && (activeBreak?.isAutomatic || activeBreak?.breakType?.includes('Auto Break')));
+  const isOutsideGeofence = Boolean(geoStatus?.geofenceEnabled && geoStatus?.officeSet && !geoStatus?.withinGeofence);
+
   return (
     <EmployeeLayout>
       <header className="h-16 flex items-center justify-between px-8 bg-white border-b border-gray-200 shadow-xs z-10">
@@ -256,8 +363,45 @@ const EmployeeDashboard = () => {
       </header>
 
       <div className="flex-1 overflow-y-auto p-8 space-y-8">
-        {/* Office Wi-Fi Not Connected Warning Banner */}
-        {networkStatus?.restrictionEnabled && !networkStatus?.authorized && (
+        {/* 1. Outside Office Boundary Warning Banner */}
+        {isOutsideGeofence && (
+          <div className="bg-gradient-to-r from-red-600 via-rose-600 to-red-700 text-white rounded-2xl p-5 shadow-lg flex flex-col sm:flex-row items-center justify-between gap-4 border border-red-500">
+            <div className="flex items-center space-x-4">
+              <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-md text-white flex items-center justify-center flex-shrink-0 animate-pulse shadow-md">
+                <MapPin className="w-6 h-6" />
+              </div>
+              <div>
+                <div className="flex items-center space-x-2">
+                  <span className="px-2.5 py-0.5 rounded-full bg-white/30 text-white text-[11px] font-black uppercase tracking-wide">
+                    Outside Office Boundary
+                  </span>
+                  <span className="text-xs text-red-100 font-mono font-bold">
+                    {geoStatus.distanceMeters !== null ? `${geoStatus.distanceMeters} meters away` : 'Boundary Exceeded'}
+                  </span>
+                </div>
+                <h3 className="text-lg font-black mt-0.5">
+                  You are outside {geoStatus.officeLocation?.name || 'the office premise'}
+                </h3>
+                <p className="text-xs text-red-100">
+                  Allowed boundary radius is {geoStatus.allowedRadiusMeters}m. Check-in, Breakover (Resume), and Check-out are locked until you are physically inside the office.
+                  {attendance?.checkIn && !attendance?.checkOut && ' Your active shift is placed on Automatic Break.'}
+                </p>
+              </div>
+            </div>
+
+            <Button
+              size="sm"
+              onClick={() => fetchAttendanceAndNetwork(false)}
+              isLoading={geoRefreshing}
+              className="bg-white text-red-700 hover:bg-red-50 font-bold text-xs shadow-md flex-shrink-0 border-0"
+            >
+              <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Re-check Location
+            </Button>
+          </div>
+        )}
+
+        {/* 2. Office Wi-Fi Not Connected Warning Banner (Only if Geofencing is not active) */}
+        {!geoStatus?.geofenceEnabled && networkStatus?.restrictionEnabled && !networkStatus?.authorized && (
           <div className="bg-red-50 border-2 border-red-400 text-red-950 rounded-2xl p-5 shadow-lg flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center space-x-4">
               <div className="w-12 h-12 rounded-xl bg-red-600 text-white flex items-center justify-center flex-shrink-0 animate-pulse shadow-md shadow-red-600/30">
@@ -276,14 +420,14 @@ const EmployeeDashboard = () => {
                   Office Wi-Fi Not Connected
                 </h3>
                 <p className="text-xs text-red-700">
-                  Punch-in, Punch-out, and Lunch Breaks are locked. Please connect to the authorized office Wi-Fi network or registered office IP address set by Admin.
+                  Punch-in, Punch-out, and Lunch Breaks are locked. Please connect to authorized office Wi-Fi or office IP address.
                 </p>
               </div>
             </div>
 
             <Button
               size="sm"
-              onClick={fetchAttendanceAndNetwork}
+              onClick={() => fetchAttendanceAndNetwork(false)}
               className="bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-sm flex-shrink-0"
             >
               <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Re-check Network
@@ -291,25 +435,33 @@ const EmployeeDashboard = () => {
           </div>
         )}
 
-        {/* On Lunch Break Notification Alert Banner */}
+        {/* 3. Break Notification Alert Banner (Auto-Break vs Standard Lunch Break) */}
         {attendance?.isOnBreak && (
-          <div className="bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-2xl p-5 shadow-lg flex flex-col sm:flex-row items-center justify-between gap-4 border border-amber-400">
+          <div className={`rounded-2xl p-5 shadow-lg flex flex-col sm:flex-row items-center justify-between gap-4 border ${
+            isAutoBreak
+              ? 'bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 text-white border-red-400'
+              : 'bg-gradient-to-r from-amber-500 to-orange-500 text-white border-amber-400'
+          }`}>
             <div className="flex items-center space-x-4">
               <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center flex-shrink-0 animate-pulse">
-                <Utensils className="w-6 h-6 text-white" />
+                {isAutoBreak ? <MapPin className="w-6 h-6 text-white" /> : <Utensils className="w-6 h-6 text-white" />}
               </div>
               <div>
                 <div className="flex items-center space-x-2">
-                  <span className="px-2 py-0.5 rounded-full bg-white/30 text-white text-[11px] font-extrabold uppercase tracking-wide">
-                    Lunch Break Active
+                  <span className="px-2.5 py-0.5 rounded-full bg-white/30 text-white text-[11px] font-extrabold uppercase tracking-wide">
+                    {isAutoBreak ? 'Auto Break (Out of Office)' : 'Lunch Break Active'}
                   </span>
-                  <span className="text-xs text-white/90 font-mono">Started at {new Date(attendance.currentBreakStart).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                  <span className="text-xs text-white/90 font-mono">
+                    Started at {new Date(attendance.currentBreakStart).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
                 </div>
                 <h3 className="text-lg font-extrabold mt-0.5">
-                  Working hours are currently paused
+                  {isAutoBreak ? 'Shift Paused: You left office premises' : 'Working hours are currently paused'}
                 </h3>
                 <p className="text-xs text-white/90">
-                  Break time is being counted and automatically deducted from your daily shift hours until you resume.
+                  {isAutoBreak
+                    ? `You are ${geoStatus?.distanceMeters !== null ? `${geoStatus.distanceMeters}m away from office` : 'outside office'}. Working hours are paused and deducted until you return to office.`
+                    : 'Break time is being counted and automatically deducted from your daily shift hours until you resume.'}
                 </p>
               </div>
             </div>
@@ -319,14 +471,24 @@ const EmployeeDashboard = () => {
                 <span className="block text-[10px] font-bold text-amber-100 uppercase tracking-widest">Break Duration</span>
                 <span className="text-2xl font-black font-mono tracking-tight">{formattedBreakTimer}</span>
               </div>
-              <Button
-                size="md"
-                onClick={handleEndBreak}
-                isLoading={breakLoading}
-                className="bg-white text-orange-700 hover:bg-amber-50 font-extrabold shadow-md border-0"
-              >
-                <Play className="w-4 h-4 mr-1.5 fill-current" /> End Break & Resume
-              </Button>
+              {isOutsideGeofence ? (
+                <Button
+                  size="md"
+                  onClick={() => toast.error(`Cannot resume work: You are outside office boundary (${geoStatus.distanceMeters}m away). Return inside office premise to resume duty.`)}
+                  className="bg-white/80 hover:bg-white text-red-700 font-extrabold shadow-md border-0 text-xs py-3"
+                >
+                  <MapPin className="w-4 h-4 mr-1.5 text-red-600" /> Return to Office to Resume
+                </Button>
+              ) : (
+                <Button
+                  size="md"
+                  onClick={handleEndBreak}
+                  isLoading={breakLoading}
+                  className="bg-white text-orange-700 hover:bg-amber-50 font-extrabold shadow-md border-0"
+                >
+                  <Play className="w-4 h-4 mr-1.5 fill-current" /> End Break & Resume
+                </Button>
+              )}
             </div>
           </div>
         )}
@@ -351,7 +513,16 @@ const EmployeeDashboard = () => {
               {/* Action Buttons: Check In, Lunch Break, Check Out */}
               <div className="w-full space-y-3 mb-6">
                 {!attendance ? (
-                  networkStatus?.restrictionEnabled && !networkStatus?.authorized ? (
+                  isOutsideGeofence ? (
+                    <Button
+                      size="lg"
+                      onClick={() => toast.error(`Outside office boundary (${geoStatus.distanceMeters}m away from ${geoStatus.officeLocation?.name || 'Office'}). You must be inside ${geoStatus.allowedRadiusMeters}m to punch in.`)}
+                      className="w-full text-xs font-bold rounded-xl py-5 bg-red-50 hover:bg-red-100 text-red-700 border-2 border-red-300 shadow-none transition-all flex items-center justify-center"
+                    >
+                      <MapPin className="w-4 h-4 mr-2 text-red-600 flex-shrink-0" />
+                      <span>OUTSIDE OFFICE BOUNDARY ({geoStatus.distanceMeters}M AWAY - PUNCH LOCKED)</span>
+                    </Button>
+                  ) : !geoStatus?.geofenceEnabled && networkStatus?.restrictionEnabled && !networkStatus?.authorized ? (
                     <Button
                       size="lg"
                       onClick={() => toast.error('Office Wi-Fi not connected. Please connect to authorized office Wi-Fi or IP to punch in.')}
@@ -374,15 +545,26 @@ const EmployeeDashboard = () => {
                   <div className="space-y-2.5">
                     {/* Break Option Toggle */}
                     {attendance.isOnBreak ? (
-                      <Button
-                        size="lg"
-                        onClick={handleEndBreak}
-                        isLoading={breakLoading}
-                        className="w-full text-sm font-bold rounded-xl py-4 bg-amber-600 hover:bg-amber-700 text-white shadow-md flex items-center justify-center transition-all"
-                      >
-                        <Play className="w-4 h-4 mr-2 fill-current" />
-                        END LUNCH BREAK (RESUME WORK)
-                      </Button>
+                      isOutsideGeofence ? (
+                        <Button
+                          size="lg"
+                          onClick={() => toast.error(`Cannot resume work: You are outside the office boundary (${geoStatus.distanceMeters}m away). Return inside office premise to resume duty.`)}
+                          className="w-full text-xs font-bold rounded-xl py-4 bg-red-50 hover:bg-red-100 text-red-700 border-2 border-red-300 shadow-none flex items-center justify-center transition-all"
+                        >
+                          <MapPin className="w-4 h-4 mr-2 text-red-600" />
+                          <span>OUTSIDE OFFICE BOUNDARY (RESUME LOCKED)</span>
+                        </Button>
+                      ) : (
+                        <Button
+                          size="lg"
+                          onClick={handleEndBreak}
+                          isLoading={breakLoading}
+                          className="w-full text-sm font-bold rounded-xl py-4 bg-amber-600 hover:bg-amber-700 text-white shadow-md flex items-center justify-center transition-all"
+                        >
+                          <Play className="w-4 h-4 mr-2 fill-current" />
+                          END BREAK (RESUME WORK)
+                        </Button>
+                      )
                     ) : (
                       <Button
                         size="lg"
@@ -397,7 +579,16 @@ const EmployeeDashboard = () => {
                     )}
 
                     {/* Punch Out Button */}
-                    {networkStatus?.restrictionEnabled && !networkStatus?.authorized ? (
+                    {isOutsideGeofence ? (
+                      <Button
+                        size="lg"
+                        onClick={() => toast.error(`Cannot punch out: Outside office boundary (${geoStatus.distanceMeters}m away). You must be physically inside office premise to punch out.`)}
+                        className="w-full text-xs font-bold rounded-xl py-4 bg-red-50 hover:bg-red-100 text-red-700 border-2 border-red-300 shadow-none transition-all flex items-center justify-center"
+                      >
+                        <MapPin className="w-4 h-4 mr-2 text-red-600 flex-shrink-0" />
+                        <span>OUTSIDE OFFICE BOUNDARY (CHECKOUT LOCKED)</span>
+                      </Button>
+                    ) : !geoStatus?.geofenceEnabled && networkStatus?.restrictionEnabled && !networkStatus?.authorized ? (
                       <Button
                         size="lg"
                         onClick={() => toast.error('Office Wi-Fi not connected. Please connect to authorized office Wi-Fi or IP to punch out.')}
@@ -425,18 +616,37 @@ const EmployeeDashboard = () => {
                 )}
               </div>
 
-              {/* Network Status Badge */}
-              <div className="flex items-center text-xs font-semibold px-3 py-1.5 rounded-full border">
-                {networkStatus.authorized ? (
-                  <span className="flex items-center text-green-700 bg-green-50 border-green-200">
-                    <Wifi className="w-3.5 h-3.5 mr-1.5 text-green-600" />
-                    Office Wi-Fi: {networkStatus.networkName || networkStatus.clientWifiName || 'Connected'}
-                  </span>
-                ) : (
-                  <span className="flex items-center text-red-700 bg-red-50 border-red-200 font-bold">
-                    <WifiOff className="w-3.5 h-3.5 mr-1.5 text-red-600" />
-                    Office Wi-Fi Not Connected
-                  </span>
+              {/* Status Badges: Geofence and Network */}
+              <div className="flex flex-col items-center gap-2 w-full">
+                {geoStatus?.geofenceEnabled && geoStatus?.officeSet && (
+                  <div className={`flex items-center text-xs font-bold px-3 py-1.5 rounded-full border ${
+                    geoStatus.withinGeofence
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                      : 'bg-red-50 text-red-700 border-red-200'
+                  }`}>
+                    <MapPin className={`w-3.5 h-3.5 mr-1.5 ${geoStatus.withinGeofence ? 'text-emerald-600' : 'text-red-600'}`} />
+                    <span>
+                      {geoStatus.withinGeofence
+                        ? `Inside Office Premise (${geoStatus.distanceMeters !== null ? `${geoStatus.distanceMeters}m` : 'Verified'})`
+                        : `Outside Office: ${geoStatus.distanceMeters}m away (Max: ${geoStatus.allowedRadiusMeters}m)`}
+                    </span>
+                  </div>
+                )}
+
+                {(!geoStatus?.geofenceEnabled || !geoStatus?.officeSet) && (
+                  <div className="flex items-center text-xs font-semibold px-3 py-1.5 rounded-full border">
+                    {networkStatus.authorized ? (
+                      <span className="flex items-center text-green-700 bg-green-50 border-green-200">
+                        <Wifi className="w-3.5 h-3.5 mr-1.5 text-green-600" />
+                        Office Wi-Fi: {networkStatus.networkName || networkStatus.clientWifiName || 'Connected'}
+                      </span>
+                    ) : (
+                      <span className="flex items-center text-red-700 bg-red-50 border-red-200 font-bold">
+                        <WifiOff className="w-3.5 h-3.5 mr-1.5 text-red-600" />
+                        Office Wi-Fi Not Connected
+                      </span>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
@@ -455,7 +665,7 @@ const EmployeeDashboard = () => {
                         ? attendance.checkOut
                           ? 'text-blue-600'
                           : attendance.isOnBreak
-                          ? 'text-amber-600'
+                          ? isAutoBreak ? 'text-rose-600' : 'text-amber-600'
                           : 'text-green-600'
                         : 'text-gray-800'
                     }`}
@@ -464,13 +674,13 @@ const EmployeeDashboard = () => {
                       ? attendance.checkOut
                         ? 'Shift Completed'
                         : attendance.isOnBreak
-                        ? 'On Lunch Break'
+                        ? isAutoBreak ? 'Auto Break (Out of Office)' : 'On Lunch Break'
                         : 'On Duty (Working)'
                       : 'Not Checked In'}
                   </p>
                   <p className="text-xs text-gray-400 mt-0.5">
                     {attendance?.isOnBreak
-                      ? 'Work time is paused'
+                      ? isAutoBreak ? 'Left office premise - Paused' : 'Work time is paused'
                       : attendance?.late
                       ? 'Late arrival recorded'
                       : attendance?.checkIn
@@ -556,6 +766,12 @@ const EmployeeDashboard = () => {
                         ? new Date(attendance.checkIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
                         : 'No punch recorded yet today'}
                     </p>
+                    {attendance?.checkInLocation?.distanceMeters !== undefined && attendance.checkInLocation.distanceMeters !== null && (
+                      <span className="text-[11px] text-emerald-700 font-mono flex items-center mt-0.5">
+                        <MapPin className="w-3 h-3 mr-1 inline" />
+                        Punched {attendance.checkInLocation.distanceMeters}m from office
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -565,12 +781,27 @@ const EmployeeDashboard = () => {
                     <React.Fragment key={idx}>
                       <div className="w-0.5 h-5 bg-amber-200 ml-5"></div>
                       <div className="flex items-start">
-                        <div className="w-10 h-10 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center flex-shrink-0">
-                          <Utensils className="w-5 h-5" />
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+                          b.isAutomatic || b.breakType?.includes('Auto Break')
+                            ? 'bg-rose-100 text-rose-700'
+                            : 'bg-amber-100 text-amber-700'
+                        }`}>
+                          {b.isAutomatic || b.breakType?.includes('Auto Break') ? (
+                            <MapPin className="w-5 h-5" />
+                          ) : (
+                            <Utensils className="w-5 h-5" />
+                          )}
                         </div>
                         <div className="ml-4 flex-1">
                           <div className="flex items-center justify-between">
-                            <h4 className="text-sm font-bold text-amber-900">{b.breakType || 'Lunch Break'}</h4>
+                            <div className="flex items-center space-x-2">
+                              <h4 className="text-sm font-bold text-gray-900">{b.breakType || 'Break'}</h4>
+                              {(b.isAutomatic || b.breakType?.includes('Auto Break')) && (
+                                <span className="px-2 py-0.5 text-[10px] font-black uppercase tracking-wider rounded-full bg-red-100 text-red-800">
+                                  Auto Break
+                                </span>
+                              )}
+                            </div>
                             <span className="px-2 py-0.5 text-[11px] font-bold rounded-full bg-amber-100 text-amber-800">
                               {b.endTime ? `${b.duration} mins deducted` : 'In Progress (Paused)'}
                             </span>
@@ -579,6 +810,11 @@ const EmployeeDashboard = () => {
                             {new Date(b.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             {b.endTime ? ` — ${new Date(b.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ' (Ongoing)'}
                           </p>
+                          {b.remarks && (
+                            <p className="text-[11px] text-gray-400 mt-0.5 italic">
+                              {b.remarks}
+                            </p>
+                          )}
                         </div>
                       </div>
                     </React.Fragment>
@@ -605,6 +841,12 @@ const EmployeeDashboard = () => {
                         ? 'Shift active. Click Punch Out when day is complete.'
                         : 'Awaiting shift check-in'}
                     </p>
+                    {attendance?.checkOutLocation?.distanceMeters !== undefined && attendance.checkOutLocation.distanceMeters !== null && (
+                      <span className="text-[11px] text-red-700 font-mono flex items-center mt-0.5">
+                        <MapPin className="w-3 h-3 mr-1 inline" />
+                        Punched {attendance.checkOutLocation.distanceMeters}m from office
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>

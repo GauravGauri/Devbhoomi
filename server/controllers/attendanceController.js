@@ -1,6 +1,7 @@
 const Attendance = require('../models/Attendance');
 const AttendanceSettings = require('../models/AttendanceSettings');
 const { checkNetworkAuth } = require('../utils/networkAuth');
+const { checkGeofenceAuth } = require('../utils/geoAuth');
 const logAudit = require('../utils/auditLogger');
 const moment = require('moment');
 
@@ -11,11 +12,22 @@ const checkIn = async (req, res, next) => {
   try {
     const today = moment().format('YYYY-MM-DD');
     const currentTime = new Date();
-    const netAuth = await checkNetworkAuth(req);
+    const settings = await AttendanceSettings.findOne();
 
-    if (!netAuth.authorized) {
+    // 1. Check GPS Geofence (Physical Office Location)
+    const geoAuth = await checkGeofenceAuth(req);
+    if (geoAuth.geofenceEnabled && geoAuth.officeSet && !geoAuth.withinGeofence) {
       res.status(403);
-      throw new Error('Office Wi-Fi not connected. Please connect to authorized office Wi-Fi or office network to punch in.');
+      throw new Error(geoAuth.message || 'Outside office boundary. You must be physically inside the office premise to punch in.');
+    }
+
+    // 2. Check Network Auth (if network restriction is enabled and geofencing is not active)
+    if (settings?.networkRestrictionEnabled && (!geoAuth.geofenceEnabled || !geoAuth.officeSet)) {
+      const netAuth = await checkNetworkAuth(req);
+      if (!netAuth.authorized) {
+        res.status(403);
+        throw new Error('Office Wi-Fi not connected. Please connect to authorized office Wi-Fi or office network to punch in.');
+      }
     }
 
     const existingRecord = await Attendance.findOne({ employee: req.user._id, date: today });
@@ -24,13 +36,18 @@ const checkIn = async (req, res, next) => {
       throw new Error("You have already marked today's attendance.");
     }
 
-    const settings = await AttendanceSettings.findOne();
     const officeStartTime = moment(settings?.officeStartTime || '09:30', 'HH:mm');
     const gracePeriod = settings?.gracePeriod || 15;
     
     const lateThreshold = officeStartTime.clone().add(gracePeriod, 'minutes');
     const isLate = moment(currentTime).isAfter(lateThreshold);
     const lateMinutes = isLate ? moment(currentTime).diff(officeStartTime, 'minutes') : 0;
+
+    const checkInLocation = geoAuth.employeeCoords ? {
+      latitude: geoAuth.employeeCoords.latitude,
+      longitude: geoAuth.employeeCoords.longitude,
+      distanceMeters: geoAuth.distanceMeters !== null ? geoAuth.distanceMeters : 0,
+    } : null;
 
     const attendance = await Attendance.create({
       employee: req.user._id,
@@ -39,14 +56,20 @@ const checkIn = async (req, res, next) => {
       attendanceType: 'Present',
       late: isLate,
       lateMinutes,
-      ipAddress: netAuth.clientIP || req.ip,
+      ipAddress: req.headers['x-forwarded-for']?.split(',')[0] || req.ip,
       networkAuthorized: true,
+      checkInLocation,
       breaks: [],
       isOnBreak: false,
       totalBreakMinutes: 0,
     });
 
-    res.status(200).json({ success: true, message: 'Checked in successfully', data: attendance });
+    res.status(200).json({
+      success: true,
+      message: 'Checked in successfully. Welcome to work!',
+      data: attendance,
+      geoAuth,
+    });
   } catch (error) {
     next(error);
   }
@@ -59,12 +82,7 @@ const startBreak = async (req, res, next) => {
   try {
     const today = moment().format('YYYY-MM-DD');
     const currentTime = new Date();
-    const netAuth = await checkNetworkAuth(req);
-
-    if (!netAuth.authorized) {
-      res.status(403);
-      throw new Error('Office Wi-Fi not connected. Please connect to authorized office Wi-Fi to log break.');
-    }
+    const geoAuth = await checkGeofenceAuth(req);
 
     const record = await Attendance.findOne({ employee: req.user._id, date: today });
     if (!record) {
@@ -82,12 +100,20 @@ const startBreak = async (req, res, next) => {
 
     const breakType = req.body.breakType || 'Lunch Break';
 
+    const startLocation = geoAuth.employeeCoords ? {
+      latitude: geoAuth.employeeCoords.latitude,
+      longitude: geoAuth.employeeCoords.longitude,
+      distanceMeters: geoAuth.distanceMeters !== null ? geoAuth.distanceMeters : 0,
+    } : null;
+
     record.isOnBreak = true;
     record.currentBreakStart = currentTime;
     record.breaks.push({
       breakType,
       startTime: currentTime,
       remarks: req.body.remarks || '',
+      isAutomatic: false,
+      startLocation,
     });
 
     await record.save();
@@ -96,6 +122,7 @@ const startBreak = async (req, res, next) => {
       success: true,
       message: `${breakType} started. Work hours are paused and will be deducted until break is ended.`,
       data: record,
+      geoAuth,
     });
   } catch (error) {
     next(error);
@@ -109,11 +136,12 @@ const endBreak = async (req, res, next) => {
   try {
     const today = moment().format('YYYY-MM-DD');
     const currentTime = new Date();
-    const netAuth = await checkNetworkAuth(req);
 
-    if (!netAuth.authorized) {
+    // 1. Check GPS Geofence (Employee must return inside office boundary to end break and resume work)
+    const geoAuth = await checkGeofenceAuth(req);
+    if (geoAuth.geofenceEnabled && geoAuth.officeSet && !geoAuth.withinGeofence) {
       res.status(403);
-      throw new Error('Office Wi-Fi not connected. Please connect to authorized office Wi-Fi to resume from break.');
+      throw new Error(geoAuth.message || 'Outside office boundary. You must return inside the office premise to end break and resume work.');
     }
 
     const record = await Attendance.findOne({ employee: req.user._id, date: today });
@@ -131,9 +159,16 @@ const endBreak = async (req, res, next) => {
     const breakStartTime = activeBreak?.startTime || record.currentBreakStart || currentTime;
     const durationMinutes = Math.max(0, Math.floor(moment(currentTime).diff(moment(breakStartTime), 'minutes')));
 
+    const endLocation = geoAuth.employeeCoords ? {
+      latitude: geoAuth.employeeCoords.latitude,
+      longitude: geoAuth.employeeCoords.longitude,
+      distanceMeters: geoAuth.distanceMeters !== null ? geoAuth.distanceMeters : 0,
+    } : null;
+
     if (activeBreak) {
       activeBreak.endTime = currentTime;
       activeBreak.duration = durationMinutes;
+      activeBreak.endLocation = endLocation;
     }
 
     // Tally all completed break durations
@@ -153,6 +188,7 @@ const endBreak = async (req, res, next) => {
       success: true,
       message: `Break ended successfully (${durationMinutes} mins deducted). Resumed duty!`,
       data: record,
+      geoAuth,
     });
   } catch (error) {
     next(error);
@@ -166,15 +202,25 @@ const checkOut = async (req, res, next) => {
   try {
     const today = moment().format('YYYY-MM-DD');
     const currentTime = new Date();
-    const netAuth = await checkNetworkAuth(req);
+    const settings = await AttendanceSettings.findOne();
 
-    if (!netAuth.authorized) {
+    // 1. Check GPS Geofence (Physical Office Location)
+    const geoAuth = await checkGeofenceAuth(req);
+    if (geoAuth.geofenceEnabled && geoAuth.officeSet && !geoAuth.withinGeofence) {
       res.status(403);
-      throw new Error('Office Wi-Fi not connected. Please connect to authorized office Wi-Fi or office network to punch out.');
+      throw new Error(geoAuth.message || 'Outside office boundary. You must be physically inside the office premise to punch out.');
+    }
+
+    // 2. Check Network Auth (if network restriction is enabled and geofencing is not active)
+    if (settings?.networkRestrictionEnabled && (!geoAuth.geofenceEnabled || !geoAuth.officeSet)) {
+      const netAuth = await checkNetworkAuth(req);
+      if (!netAuth.authorized) {
+        res.status(403);
+        throw new Error('Office Wi-Fi not connected. Please connect to authorized office Wi-Fi or office network to punch out.');
+      }
     }
 
     const record = await Attendance.findOne({ employee: req.user._id, date: today });
-    
     if (!record) {
       res.status(400);
       throw new Error('No check-in record found for today.');
@@ -206,11 +252,23 @@ const checkOut = async (req, res, next) => {
     const grossShiftMinutes = Math.max(0, Math.floor(moment(currentTime).diff(moment(record.checkIn), 'minutes')));
     const netWorkingHours = Math.max(0, grossShiftMinutes - totalBreakMinutes);
 
+    const checkOutLocation = geoAuth.employeeCoords ? {
+      latitude: geoAuth.employeeCoords.latitude,
+      longitude: geoAuth.employeeCoords.longitude,
+      distanceMeters: geoAuth.distanceMeters !== null ? geoAuth.distanceMeters : 0,
+    } : null;
+
     record.checkOut = currentTime;
     record.workingHours = netWorkingHours;
+    record.checkOutLocation = checkOutLocation;
     await record.save();
 
-    res.status(200).json({ success: true, message: 'Checked out successfully. Shift completed.', data: record });
+    res.status(200).json({
+      success: true,
+      message: 'Checked out successfully. Shift completed.',
+      data: record,
+      geoAuth,
+    });
   } catch (error) {
     next(error);
   }
@@ -426,6 +484,71 @@ const deleteAttendance = async (req, res, next) => {
   }
 };
 
+// @desc    Verify employee GPS location & trigger auto-break if employee left office boundary
+// @route   POST /api/attendance/verify-location
+// @access  Private/Employee
+const verifyLocationAndAutoBreak = async (req, res, next) => {
+  try {
+    const today = moment().format('YYYY-MM-DD');
+    const currentTime = new Date();
+    const geoAuth = await checkGeofenceAuth(req);
+    const settings = await AttendanceSettings.findOne();
+
+    const record = await Attendance.findOne({ employee: req.user._id, date: today });
+    let autoBreakTriggered = false;
+
+    // Only apply automatic break if employee has checked in and not checked out
+    if (record && record.checkIn && !record.checkOut) {
+      const isOut = geoAuth.geofenceEnabled && geoAuth.officeSet && !geoAuth.withinGeofence;
+      const shouldAutoBreak = settings?.autoBreakOutOfOffice !== false;
+
+      // If outside office boundary and NOT already on break -> TRIGGER AUTOMATIC BREAK
+      if (isOut && shouldAutoBreak && !record.isOnBreak) {
+        record.isOnBreak = true;
+        record.currentBreakStart = currentTime;
+        record.breaks.push({
+          breakType: 'Auto Break (Out of Office)',
+          startTime: currentTime,
+          isAutomatic: true,
+          remarks: `Automatically triggered: ${geoAuth.distanceMeters}m from office (allowed: ${settings?.geofenceRadiusMeters || 100}m)`,
+          startLocation: geoAuth.employeeCoords ? {
+            latitude: geoAuth.employeeCoords.latitude,
+            longitude: geoAuth.employeeCoords.longitude,
+            distanceMeters: geoAuth.distanceMeters || 0,
+          } : null,
+        });
+
+        await record.save();
+        autoBreakTriggered = true;
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      autoBreakTriggered,
+      attendance: record || null,
+      geoAuth,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get Geofence Status
+// @route   GET /api/attendance/geo-status
+// @access  Private/Employee
+const getGeoStatus = async (req, res, next) => {
+  try {
+    const geoAuth = await checkGeofenceAuth(req);
+    res.status(200).json({
+      success: true,
+      geoAuth,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   checkIn,
   startBreak,
@@ -437,4 +560,6 @@ module.exports = {
   getAllAttendances,
   manualAttendance,
   deleteAttendance,
+  verifyLocationAndAutoBreak,
+  getGeoStatus,
 };

@@ -21,6 +21,18 @@ api.interceptors.request.use(
     if (wifiName) {
       config.headers['x-wifi-name'] = wifiName;
     }
+
+    try {
+      const storedCoords = sessionStorage.getItem('client_geo_coords');
+      if (storedCoords) {
+        const parsed = JSON.parse(storedCoords);
+        if (parsed.latitude && parsed.longitude) {
+          config.headers['x-latitude'] = String(parsed.latitude);
+          config.headers['x-longitude'] = String(parsed.longitude);
+        }
+      }
+    } catch (e) {}
+
     return config;
   },
   (error) => {

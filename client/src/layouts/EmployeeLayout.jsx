@@ -15,19 +15,23 @@ import {
   Lock,
   ArrowRight,
   Info,
+  MapPin,
+  Navigation,
 } from 'lucide-react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import api from '../services/api';
 import toast from 'react-hot-toast';
+import { getCurrentLocation } from '../services/locationService';
 
 const EmployeeLayout = ({ children }) => {
   const { user, logout } = useContext(AuthContext);
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Network Gate State
+  // Network Gate & Geofencing State
   const [networkLoading, setNetworkLoading] = useState(true);
   const [networkStatus, setNetworkStatus] = useState(null);
+  const [geoStatus, setGeoStatus] = useState(null);
   const [wifiInput, setWifiInput] = useState(localStorage.getItem('client_wifi_name') || '');
   const [isVerifyingWifi, setIsVerifyingWifi] = useState(false);
   const [showNetworkModal, setShowNetworkModal] = useState(false);
@@ -61,7 +65,6 @@ const EmployeeLayout = ({ children }) => {
       setNetworkStatus(data);
     } catch (error) {
       console.error('Failed to query network status:', error);
-      // Fallback
       setNetworkStatus({
         authorized: false,
         restrictionEnabled: true,
@@ -72,11 +75,54 @@ const EmployeeLayout = ({ children }) => {
     }
   };
 
+  // Location Verification & Auto-Break Check
+  const checkLocationAndAutoBreak = async () => {
+    try {
+      const coords = await getCurrentLocation(false).catch(() => null);
+      if (coords) {
+        const { data } = await api.post('/attendance/verify-location', {
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+        });
+        if (data.geoAuth) {
+          setGeoStatus(data.geoAuth);
+        }
+        if (data.autoBreakTriggered) {
+          toast.error('You left the office boundary! Working hours paused and automatic break started.', {
+            duration: 8000,
+            icon: '🚶‍♂️',
+          });
+        }
+      } else {
+        const { data } = await api.get('/attendance/geo-status');
+        if (data.geoAuth) setGeoStatus(data.geoAuth);
+      }
+    } catch (err) {
+      console.error('Geofencing check failed:', err);
+    }
+  };
+
   useEffect(() => {
     checkNetwork();
-    // Poll network status every 60 seconds
-    const interval = setInterval(() => checkNetwork(true), 60000);
+    checkLocationAndAutoBreak();
+
+    // Re-verify network and location every 30 seconds to track boundary and auto-break
+    const interval = setInterval(() => {
+      checkNetwork(true);
+      checkLocationAndAutoBreak();
+    }, 30000);
     return () => clearInterval(interval);
+  }, []);
+
+  // Check location & auto-break whenever employee switches back to the tab/window or reopens portal
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        checkLocationAndAutoBreak();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, []);
 
   const handleVerifyWifi = async (e) => {
@@ -131,14 +177,20 @@ const EmployeeLayout = ({ children }) => {
       <div className="flex h-screen items-center justify-center bg-gray-50">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-9 w-9 border-3 border-blue-600 border-t-transparent mb-3"></div>
-          <p className="text-sm font-semibold text-gray-700">Verifying DevBhoomi Office Network...</p>
+          <p className="text-sm font-semibold text-gray-700">Verifying DevBhoomi Office Network & Location...</p>
         </div>
       </div>
     );
   }
 
-  // 2. Network Gate: Strict Lock Screen if restriction is enabled and not authorized
-  const isBlocked = networkStatus && networkStatus.restrictionEnabled && !networkStatus.authorized;
+  // 2. Security Gate:
+  // If Geofencing is configured (office coordinates set & enabled), presence and attendance locks are governed by GPS geofence (with automatic break).
+  // The full-page legacy Network Gate only blocks the screen if Geofencing is NOT configured and network restriction is enforced without authorized connection.
+  const hasGeofence = Boolean(geoStatus?.geofenceEnabled && geoStatus?.officeSet);
+  const isNetworkAuth = Boolean(networkStatus?.authorized);
+  const isNetworkEnforced = Boolean(networkStatus?.restrictionEnabled);
+
+  const isBlocked = !hasGeofence && isNetworkEnforced && !isNetworkAuth;
 
   if (isBlocked) {
     return (
@@ -347,6 +399,26 @@ const EmployeeLayout = ({ children }) => {
           </p>
         </div>
 
+        {/* Geofencing Location Widget in Sidebar */}
+        {geoStatus && geoStatus.geofenceEnabled && geoStatus.officeSet && (
+          <div className="p-3 mx-3 my-1 bg-slate-50 rounded-xl border border-slate-200">
+            <div className="flex items-center space-x-2">
+              <span className="relative flex h-2 w-2">
+                <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${geoStatus.withinGeofence ? 'bg-emerald-400' : 'bg-red-400'} opacity-75`}></span>
+                <span className={`relative inline-flex rounded-full h-2 w-2 ${geoStatus.withinGeofence ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
+              </span>
+              <span className={`text-xs font-bold ${geoStatus.withinGeofence ? 'text-emerald-800' : 'text-red-800'}`}>
+                {geoStatus.withinGeofence ? 'Inside Office Premise' : 'Outside Office Boundary'}
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-500 truncate mt-1 font-mono">
+              {geoStatus.distanceMeters !== null
+                ? `${geoStatus.distanceMeters}m away (max ${geoStatus.allowedRadiusMeters}m)`
+                : 'GPS Location active'}
+            </p>
+          </div>
+        )}
+
         <div className="flex-1 overflow-y-auto py-2">
           <nav className="space-y-1 px-3">
             {navItems.map((item) => {
@@ -389,6 +461,27 @@ const EmployeeLayout = ({ children }) => {
       </aside>
 
       <main className="flex-1 flex flex-col overflow-hidden">
+        {/* Persistent Warning Banner when outside office geofence */}
+        {geoStatus && geoStatus.geofenceEnabled && geoStatus.officeSet && !geoStatus.withinGeofence && (
+          <div className="bg-gradient-to-r from-red-600 to-rose-700 text-white px-5 py-3 text-xs font-medium flex items-center justify-between shadow-md z-20 flex-shrink-0 border-b border-red-700">
+            <div className="flex items-center space-x-3 truncate">
+              <span className="relative flex h-2.5 w-2.5 flex-shrink-0">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-white"></span>
+              </span>
+              <span className="truncate">
+                <strong className="font-bold uppercase tracking-wider text-white mr-1.5">OUTSIDE OFFICE BOUNDARY:</strong>
+                You are currently {geoStatus.distanceMeters !== null ? `${geoStatus.distanceMeters}m` : 'away'} from {geoStatus.officeLocation?.name || 'Office'} (Allowed radius: {geoStatus.allowedRadiusMeters}m). Active shift is on Automatic Break. Check-in and Check-out are locked until you return inside office premises.
+              </span>
+            </div>
+            <button
+              onClick={() => checkLocationAndAutoBreak()}
+              className="ml-3 px-3 py-1 bg-white/20 hover:bg-white/30 text-white rounded-lg text-xs font-bold flex-shrink-0 flex items-center transition-colors"
+            >
+              <RefreshCw className="w-3.5 h-3.5 mr-1" /> Re-check Location
+            </button>
+          </div>
+        )}
         {children}
       </main>
 
