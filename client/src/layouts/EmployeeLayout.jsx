@@ -152,7 +152,7 @@ const EmployeeLayout = ({ children }) => {
             </div>
 
             <h2 className="text-2xl font-extrabold text-center text-white mb-2">
-              Office Network Verification Required
+              Office Wi-Fi Not Connected
             </h2>
             <p className="text-sm text-slate-400 text-center max-w-lg mx-auto mb-8">
               DevBhoomi security policy requires all employee portal pages to run exclusively on the authorized office Wi-Fi network or IP address set by Admin.

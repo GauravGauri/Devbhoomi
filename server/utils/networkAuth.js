@@ -99,8 +99,8 @@ const checkNetworkAuth = async (req) => {
     allowedIPs,
     allowedWifiNames,
     message: authorized
-      ? `Connected to authorized DevBhoomi network (${matchedBy === 'wifi' ? `Wi-Fi: ${clientWifiName}` : matchedBy === 'ip' ? `IP: ${clientIP}` : `Wi-Fi: ${clientWifiName} & IP: ${clientIP}`}).`
-      : 'Access restricted: DevBhoomi Employee Portal requires connection to an authorized Wi-Fi network or IP address.',
+      ? `Office Wi-Fi connected (${matchedBy === 'wifi' ? `Wi-Fi: ${clientWifiName}` : matchedBy === 'ip' ? `IP: ${clientIP}` : `Wi-Fi: ${clientWifiName} & IP: ${clientIP}`}).`
+      : 'Office Wi-Fi not connected: You must connect to the authorized office Wi-Fi network or IP address.',
   };
 };
 

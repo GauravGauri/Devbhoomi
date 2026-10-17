@@ -19,6 +19,7 @@ import {
   Pause,
   Timer,
   CheckCircle2,
+  RefreshCw,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import api from '../../services/api';
@@ -105,6 +106,15 @@ const EmployeeDashboard = () => {
   const handleCheckIn = async () => {
     setLoading(true);
     try {
+      // Automatically re-verify live network status
+      const netRes = await api.get('/attendance/network-status');
+      if (netRes.data) setNetworkStatus(netRes.data);
+
+      if (netRes.data?.restrictionEnabled && !netRes.data?.authorized) {
+        toast.error('Office Wi-Fi not connected. Please connect to authorized office Wi-Fi or office network to punch in.');
+        return;
+      }
+
       const { data } = await api.post('/attendance/check-in');
       setAttendance(data.data);
       toast.success('Punched in successfully! Have a productive day.');
@@ -118,6 +128,15 @@ const EmployeeDashboard = () => {
   const handleStartBreak = async () => {
     setBreakLoading(true);
     try {
+      // Automatically re-verify live network status
+      const netRes = await api.get('/attendance/network-status');
+      if (netRes.data) setNetworkStatus(netRes.data);
+
+      if (netRes.data?.restrictionEnabled && !netRes.data?.authorized) {
+        toast.error('Office Wi-Fi not connected. Please connect to authorized office Wi-Fi to start break.');
+        return;
+      }
+
       const { data } = await api.post('/attendance/break/start', {
         breakType: 'Lunch Break',
       });
@@ -133,6 +152,15 @@ const EmployeeDashboard = () => {
   const handleEndBreak = async () => {
     setBreakLoading(true);
     try {
+      // Automatically re-verify live network status
+      const netRes = await api.get('/attendance/network-status');
+      if (netRes.data) setNetworkStatus(netRes.data);
+
+      if (netRes.data?.restrictionEnabled && !netRes.data?.authorized) {
+        toast.error('Office Wi-Fi not connected. Please connect to authorized office Wi-Fi to resume from break.');
+        return;
+      }
+
       const { data } = await api.post('/attendance/break/end');
       setAttendance(data.data);
       toast.success('Break ended. Resumed duty, welcome back!');
@@ -151,6 +179,15 @@ const EmployeeDashboard = () => {
     }
     setLoading(true);
     try {
+      // Automatically re-verify live network status before checkout
+      const netRes = await api.get('/attendance/network-status');
+      if (netRes.data) setNetworkStatus(netRes.data);
+
+      if (netRes.data?.restrictionEnabled && !netRes.data?.authorized) {
+        toast.error('Office Wi-Fi not connected. Please connect to authorized office Wi-Fi or office network to punch out.');
+        return;
+      }
+
       const { data } = await api.post('/attendance/check-out');
       setAttendance(data.data);
       toast.success('Punched out successfully! Work session saved.');
@@ -206,6 +243,41 @@ const EmployeeDashboard = () => {
       </header>
 
       <div className="flex-1 overflow-y-auto p-8 space-y-8">
+        {/* Office Wi-Fi Not Connected Warning Banner */}
+        {networkStatus?.restrictionEnabled && !networkStatus?.authorized && (
+          <div className="bg-red-50 border-2 border-red-400 text-red-950 rounded-2xl p-5 shadow-lg flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center space-x-4">
+              <div className="w-12 h-12 rounded-xl bg-red-600 text-white flex items-center justify-center flex-shrink-0 animate-pulse shadow-md shadow-red-600/30">
+                <WifiOff className="w-6 h-6" />
+              </div>
+              <div>
+                <div className="flex items-center space-x-2">
+                  <span className="px-2.5 py-0.5 rounded-full bg-red-600 text-white text-[11px] font-black uppercase tracking-wide">
+                    Network Restricted
+                  </span>
+                  <span className="text-xs text-red-700 font-mono font-bold">
+                    {networkStatus?.clientWifiName ? `Wi-Fi: "${networkStatus.clientWifiName}" not authorized` : 'Office Wi-Fi not connected'}
+                  </span>
+                </div>
+                <h3 className="text-lg font-black text-red-900 mt-0.5">
+                  Office Wi-Fi Not Connected
+                </h3>
+                <p className="text-xs text-red-700">
+                  Punch-in, Punch-out, and Lunch Breaks are locked. Please connect to the authorized office Wi-Fi network or registered office IP address set by Admin.
+                </p>
+              </div>
+            </div>
+
+            <Button
+              size="sm"
+              onClick={fetchAttendanceAndNetwork}
+              className="bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-sm flex-shrink-0"
+            >
+              <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Re-check Network
+            </Button>
+          </div>
+        )}
+
         {/* On Lunch Break Notification Alert Banner */}
         {attendance?.isOnBreak && (
           <div className="bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-2xl p-5 shadow-lg flex flex-col sm:flex-row items-center justify-between gap-4 border border-amber-400">
@@ -266,14 +338,25 @@ const EmployeeDashboard = () => {
               {/* Action Buttons: Check In, Lunch Break, Check Out */}
               <div className="w-full space-y-3 mb-6">
                 {!attendance ? (
-                  <Button
-                    size="lg"
-                    onClick={handleCheckIn}
-                    isLoading={loading}
-                    className="w-full text-base font-bold rounded-xl py-6 bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg transition-all"
-                  >
-                    MARK ATTENDANCE (PUNCH IN)
-                  </Button>
+                  networkStatus?.restrictionEnabled && !networkStatus?.authorized ? (
+                    <Button
+                      size="lg"
+                      onClick={() => toast.error('Office Wi-Fi not connected. Please connect to authorized office Wi-Fi or IP to punch in.')}
+                      className="w-full text-xs font-bold rounded-xl py-5 bg-red-50 hover:bg-red-100 text-red-700 border-2 border-red-300 shadow-none transition-all flex items-center justify-center"
+                    >
+                      <WifiOff className="w-4 h-4 mr-2 text-red-600 flex-shrink-0" />
+                      <span>OFFICE WI-FI NOT CONNECTED (PUNCH LOCKED)</span>
+                    </Button>
+                  ) : (
+                    <Button
+                      size="lg"
+                      onClick={handleCheckIn}
+                      isLoading={loading}
+                      className="w-full text-base font-bold rounded-xl py-6 bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg transition-all"
+                    >
+                      MARK ATTENDANCE (PUNCH IN)
+                    </Button>
+                  )
                 ) : !attendance.checkOut ? (
                   <div className="space-y-2.5">
                     {/* Break Option Toggle */}
@@ -301,15 +384,26 @@ const EmployeeDashboard = () => {
                     )}
 
                     {/* Punch Out Button */}
-                    <Button
-                      size="lg"
-                      variant="danger"
-                      onClick={handleCheckOut}
-                      isLoading={loading}
-                      className="w-full text-sm font-bold rounded-xl py-4 bg-red-600 hover:bg-red-700 text-white shadow-md transition-all"
-                    >
-                      PUNCH OUT (FINISH SHIFT)
-                    </Button>
+                    {networkStatus?.restrictionEnabled && !networkStatus?.authorized ? (
+                      <Button
+                        size="lg"
+                        onClick={() => toast.error('Office Wi-Fi not connected. Please connect to authorized office Wi-Fi or IP to punch out.')}
+                        className="w-full text-xs font-bold rounded-xl py-4 bg-red-50 hover:bg-red-100 text-red-700 border-2 border-red-300 shadow-none transition-all flex items-center justify-center"
+                      >
+                        <WifiOff className="w-4 h-4 mr-2 text-red-600 flex-shrink-0" />
+                        <span>OFFICE WI-FI NOT CONNECTED (CHECKOUT LOCKED)</span>
+                      </Button>
+                    ) : (
+                      <Button
+                        size="lg"
+                        variant="danger"
+                        onClick={handleCheckOut}
+                        isLoading={loading}
+                        className="w-full text-sm font-bold rounded-xl py-4 bg-red-600 hover:bg-red-700 text-white shadow-md transition-all"
+                      >
+                        PUNCH OUT (FINISH SHIFT)
+                      </Button>
+                    )}
                   </div>
                 ) : (
                   <div className="w-full bg-green-50 border border-green-200 text-green-800 font-semibold py-4 rounded-xl text-center text-sm">
@@ -323,12 +417,12 @@ const EmployeeDashboard = () => {
                 {networkStatus.authorized ? (
                   <span className="flex items-center text-green-700 bg-green-50 border-green-200">
                     <Wifi className="w-3.5 h-3.5 mr-1.5 text-green-600" />
-                    Network: {networkStatus.networkName} (Authorized)
+                    Office Wi-Fi: {networkStatus.networkName || networkStatus.clientWifiName || 'Connected'}
                   </span>
                 ) : (
-                  <span className="flex items-center text-red-700 bg-red-50 border-red-200">
+                  <span className="flex items-center text-red-700 bg-red-50 border-red-200 font-bold">
                     <WifiOff className="w-3.5 h-3.5 mr-1.5 text-red-600" />
-                    Network: {networkStatus.networkName} (Restricted)
+                    Office Wi-Fi Not Connected
                   </span>
                 )}
               </div>

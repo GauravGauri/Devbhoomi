@@ -15,7 +15,7 @@ const checkIn = async (req, res, next) => {
 
     if (!netAuth.authorized) {
       res.status(403);
-      throw new Error(netAuth.message || 'You are not connected to an authorized office Wi-Fi network or IP address.');
+      throw new Error('Office Wi-Fi not connected. Please connect to authorized office Wi-Fi or office network to punch in.');
     }
 
     const existingRecord = await Attendance.findOne({ employee: req.user._id, date: today });
@@ -63,7 +63,7 @@ const startBreak = async (req, res, next) => {
 
     if (!netAuth.authorized) {
       res.status(403);
-      throw new Error(netAuth.message || 'Network authorization required to log break.');
+      throw new Error('Office Wi-Fi not connected. Please connect to authorized office Wi-Fi to log break.');
     }
 
     const record = await Attendance.findOne({ employee: req.user._id, date: today });
@@ -113,7 +113,7 @@ const endBreak = async (req, res, next) => {
 
     if (!netAuth.authorized) {
       res.status(403);
-      throw new Error(netAuth.message || 'Network authorization required to resume from break.');
+      throw new Error('Office Wi-Fi not connected. Please connect to authorized office Wi-Fi to resume from break.');
     }
 
     const record = await Attendance.findOne({ employee: req.user._id, date: today });
@@ -170,7 +170,7 @@ const checkOut = async (req, res, next) => {
 
     if (!netAuth.authorized) {
       res.status(403);
-      throw new Error('You are not connected to the authorized office network.');
+      throw new Error('Office Wi-Fi not connected. Please connect to authorized office Wi-Fi or office network to punch out.');
     }
 
     const record = await Attendance.findOne({ employee: req.user._id, date: today });

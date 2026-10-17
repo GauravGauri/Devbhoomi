@@ -1,4 +1,4 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
@@ -8,7 +8,7 @@ import { AuthContext } from '../../context/AuthContext';
 import api from '../../services/api';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
-import { UserCircle } from 'lucide-react';
+import { UserCircle, Wifi, WifiOff } from 'lucide-react';
 
 const schema = yup.object().shape({
   username: yup.string().required('Username is required'),
@@ -17,8 +17,21 @@ const schema = yup.object().shape({
 
 const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
+  const [networkStatus, setNetworkStatus] = useState(null);
   const { login } = useContext(AuthContext);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchNetwork = async () => {
+      try {
+        const { data } = await api.get('/attendance/network-status');
+        setNetworkStatus(data);
+      } catch (err) {
+        // silent fail
+      }
+    };
+    fetchNetwork();
+  }, []);
 
   const { register, handleSubmit, setValue, formState: { errors } } = useForm({
     resolver: yupResolver(schema),
@@ -64,6 +77,26 @@ const Login = () => {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white px-4 py-8 shadow-xl shadow-blue-900/5 sm:rounded-2xl sm:px-10 border border-gray-100">
+          {/* Network check banner */}
+          {networkStatus && (
+            <div className="mb-6">
+              {networkStatus.authorized ? (
+                <div className="flex items-center space-x-2 bg-green-50 border border-green-200 text-green-800 text-xs px-3 py-2 rounded-xl">
+                  <Wifi className="w-4 h-4 text-green-600 flex-shrink-0" />
+                  <span className="font-semibold">Office Wi-Fi Connected ({networkStatus.clientWifiName || 'Office Network'})</span>
+                </div>
+              ) : networkStatus.restrictionEnabled ? (
+                <div className="flex items-center space-x-2 bg-red-50 border border-red-200 text-red-800 text-xs px-3 py-2 rounded-xl">
+                  <WifiOff className="w-4 h-4 text-red-600 flex-shrink-0" />
+                  <div>
+                    <span className="font-bold">Office Wi-Fi Not Connected: </span>
+                    <span>Portal actions restricted to office Wi-Fi or registered IP.</span>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          )}
+
           <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
             <Input
               label="Username"
