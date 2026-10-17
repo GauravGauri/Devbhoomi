@@ -52,12 +52,12 @@ const AdminDashboard = () => {
 
   return (
     <AdminLayout>
-      <header className="h-16 flex items-center justify-between px-8 bg-white border-b border-gray-200 shadow-xs">
+      <header className="min-h-16 py-3 px-4 sm:px-8 bg-white border-b border-gray-200 shadow-xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h2 className="text-xl font-bold text-gray-900">Admin Control Center</h2>
+          <h2 className="text-lg sm:text-xl font-bold text-gray-900">Admin Control Center</h2>
           <p className="text-xs text-gray-500">Live operational overview & real-time attendance analytics</p>
         </div>
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-2 sm:space-x-3 flex-wrap gap-y-2">
           <Button
             variant="outline"
             size="sm"
@@ -68,19 +68,19 @@ const AdminDashboard = () => {
             <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Refresh Data
           </Button>
           <Link to="/admin/employees">
-            <Button size="sm" className="flex items-center text-xs bg-indigo-600 hover:bg-indigo-700">
+            <Button size="sm" className="flex items-center text-xs bg-indigo-600 hover:bg-indigo-700 text-white">
               <Plus className="w-3.5 h-3.5 mr-1.5" /> Manage Employees
             </Button>
           </Link>
         </div>
       </header>
       
-      <div className="flex-1 overflow-y-auto p-8 space-y-8">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8">
         {/* Pending Leaves Alert Banner */}
         {stats?.pendingLeavesCount > 0 && (
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center justify-between shadow-xs">
-            <div className="flex items-center space-x-3">
-              <div className="w-9 h-9 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center">
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+            <div className="flex items-start sm:items-center space-x-3">
+              <div className="w-9 h-9 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 mt-0.5 sm:mt-0">
                 <AlertTriangle className="w-5 h-5" />
               </div>
               <div>
@@ -90,8 +90,8 @@ const AdminDashboard = () => {
                 <p className="text-xs text-amber-700">Employees are awaiting administrative moderation.</p>
               </div>
             </div>
-            <Link to="/admin/leaves">
-              <Button size="sm" className="bg-amber-600 hover:bg-amber-700 text-white text-xs flex items-center">
+            <Link to="/admin/leaves" className="w-full sm:w-auto">
+              <Button size="sm" className="bg-amber-600 hover:bg-amber-700 text-white text-xs flex items-center justify-center w-full sm:w-auto">
                 Review Leaves <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
               </Button>
             </Link>
@@ -99,17 +99,17 @@ const AdminDashboard = () => {
         )}
 
         {/* 4 Core KPI Stat Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="bg-white rounded-xl shadow-xs border border-gray-200 p-6 flex items-center justify-between">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+          <div className="bg-white rounded-xl shadow-xs border border-gray-200 p-4 sm:p-6 flex items-center justify-between">
             <div>
-              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Total Active Employees</span>
-              <p className="text-3xl font-extrabold text-gray-900 mt-1">
+              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Total Active</span>
+              <p className="text-2xl sm:text-3xl font-extrabold text-gray-900 mt-1">
                 {loading ? '...' : (stats?.totalEmployees || 0)}
               </p>
               <span className="text-[11px] text-gray-400">Total in system: {stats?.totalAllEmployees || 0}</span>
             </div>
-            <div className="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
-              <Users className="w-6 h-6" />
+            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+              <Users className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
           </div>
 
@@ -243,7 +243,7 @@ const AdminDashboard = () => {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
+            <table className="min-w-full divide-y divide-gray-200 min-w-[640px]">
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Employee</th>

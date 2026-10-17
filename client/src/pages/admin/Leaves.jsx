@@ -93,7 +93,7 @@ const AdminLeaves = () => {
 
   return (
     <AdminLayout>
-      <header className="h-16 flex items-center justify-between px-8 bg-white border-b border-gray-200 shadow-xs">
+      <header className="min-h-16 py-3 px-4 sm:px-8 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white border-b border-gray-200 shadow-xs">
         <div>
           <h2 className="text-xl font-bold text-gray-900">Leave Moderation Pipeline</h2>
           <p className="text-xs text-gray-500">Review, evaluate, and moderate employee time-off & leave requests</p>
@@ -105,9 +105,9 @@ const AdminLeaves = () => {
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto p-8 space-y-6">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 space-y-6">
         {/* KPI Summary Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="bg-white rounded-xl border border-gray-200 p-4 flex items-center justify-between">
             <div>
               <span className="text-xs text-gray-500 font-semibold uppercase">Total Requests</span>
@@ -152,15 +152,15 @@ const AdminLeaves = () => {
         {/* Requests Ledger */}
         <div className="bg-white rounded-xl shadow-xs border border-gray-200 overflow-hidden">
           {/* Filter Bar */}
-          <div className="p-4 border-b border-gray-200 flex flex-wrap justify-between items-center bg-gray-50/50 gap-4">
-            <div className="flex flex-wrap items-center gap-3">
+          <div className="p-4 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between bg-gray-50/50 gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full sm:w-auto">
               {/* Status Tabs */}
-              <div className="inline-flex rounded-lg border border-gray-200 bg-white p-1">
+              <div className="inline-flex rounded-lg border border-gray-200 bg-white p-1 overflow-x-auto max-w-full">
                 {['All', 'Pending', 'Approved', 'Rejected'].map((status) => (
                   <button
                     key={status}
                     onClick={() => setStatusFilter(status)}
-                    className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
+                    className={`px-3 py-1 text-xs font-semibold rounded-md whitespace-nowrap transition-all ${
                       statusFilter === status
                         ? 'bg-indigo-600 text-white shadow-xs'
                         : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
@@ -172,7 +172,7 @@ const AdminLeaves = () => {
               </div>
 
               {/* Search */}
-              <div className="relative w-64">
+              <div className="relative w-full sm:w-64">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Search className="h-4 w-4 text-gray-400" />
                 </div>
@@ -192,7 +192,7 @@ const AdminLeaves = () => {
           </div>
 
           <div className="overflow-x-auto min-h-[300px]">
-            <table className="min-w-full divide-y divide-gray-200">
+            <table className="w-full min-w-[700px] divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Employee</th>
@@ -302,9 +302,9 @@ const AdminLeaves = () => {
 
       {/* MODAL 1: APPROVE / REJECT CONFIRMATION WITH REMARKS */}
       {decisionModal.open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-gray-100">
-            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-gray-50/50">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-3 sm:p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden border border-gray-100">
+            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-gray-50/50 shrink-0">
               <h3 className="text-base font-bold text-gray-900">
                 {decisionModal.type === 'Approved' ? 'Approve Leave Request' : 'Reject Leave Request'}
               </h3>
@@ -312,7 +312,7 @@ const AdminLeaves = () => {
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <form onSubmit={submitDecision} className="p-6 space-y-4">
+            <form onSubmit={submitDecision} className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1">
               <div className="bg-gray-50 rounded-lg p-3 border border-gray-100 text-xs space-y-1">
                 <p><span className="font-semibold text-gray-700">Employee:</span> {selectedLeave?.employee?.name}</p>
                 <p><span className="font-semibold text-gray-700">Type:</span> {selectedLeave?.leaveType}</p>
@@ -352,15 +352,15 @@ const AdminLeaves = () => {
 
       {/* MODAL 2: FULL DETAILS VIEW */}
       {viewModal && selectedLeave && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-gray-100">
-            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-gray-50/50">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-3 sm:p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden border border-gray-100">
+            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-gray-50/50 shrink-0">
               <h3 className="text-base font-bold text-gray-900">Leave Application Details</h3>
               <button onClick={() => setViewModal(false)} className="text-gray-400 hover:text-gray-600">
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1">
               <div className="flex items-center space-x-3">
                 <div className="w-12 h-12 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-lg">
                   {selectedLeave.employee?.name?.charAt(0) || 'E'}
@@ -371,7 +371,7 @@ const AdminLeaves = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 border-t border-b border-gray-100 py-3 text-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-b border-gray-100 py-3 text-sm">
                 <div>
                   <span className="text-xs text-gray-400 font-semibold uppercase">Category</span>
                   <p className="font-semibold text-gray-800">{selectedLeave.leaveType}</p>

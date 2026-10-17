@@ -99,12 +99,12 @@ const LeaveRequests = () => {
 
   return (
     <EmployeeLayout>
-      <header className="h-16 flex items-center justify-between px-8 bg-white border-b border-gray-200 shadow-xs">
+      <header className="min-h-16 py-3 px-4 sm:px-8 bg-white border-b border-gray-200 shadow-xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h2 className="text-xl font-bold text-gray-900">Leave Applications</h2>
+          <h2 className="text-lg sm:text-xl font-bold text-gray-900">Leave Applications</h2>
           <p className="text-xs text-gray-500">Submit requests for scheduled time off, casual leave, sick days, or short leaves</p>
         </div>
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-2 sm:space-x-3 flex-wrap gap-y-2">
           <Button variant="outline" size="sm" onClick={fetchLeaves} className="flex items-center text-xs">
             <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${loading ? 'animate-spin' : ''}`} /> Refresh
           </Button>
@@ -114,7 +114,7 @@ const LeaveRequests = () => {
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto p-8 space-y-6">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 space-y-6">
         {/* KPI Mini Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="bg-white rounded-xl border border-gray-200 p-4 flex items-center justify-between">
@@ -149,13 +149,13 @@ const LeaveRequests = () => {
         {/* Requests Table */}
         <div className="bg-white rounded-xl shadow-xs border border-gray-200 overflow-hidden">
           {/* Status Tab Filters */}
-          <div className="p-4 border-b border-gray-200 flex flex-wrap items-center justify-between gap-4 bg-gray-50/50">
-            <div className="inline-flex rounded-lg border border-gray-200 bg-white p-1">
+          <div className="p-4 border-b border-gray-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-gray-50/50">
+            <div className="inline-flex rounded-lg border border-gray-200 bg-white p-1 overflow-x-auto max-w-full">
               {['All', 'Pending', 'Approved', 'Rejected'].map((status) => (
                 <button
                   key={status}
                   onClick={() => setStatusFilter(status)}
-                  className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
+                  className={`px-3 py-1 text-xs font-semibold rounded-md transition-all shrink-0 ${
                     statusFilter === status
                       ? 'bg-blue-600 text-white shadow-xs'
                       : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
@@ -172,7 +172,7 @@ const LeaveRequests = () => {
           </div>
 
           <div className="overflow-x-auto min-h-[300px]">
-            <table className="min-w-full divide-y divide-gray-200">
+            <table className="min-w-full divide-y divide-gray-200 min-w-[640px]">
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Leave Category</th>
@@ -238,7 +238,7 @@ const LeaveRequests = () => {
                             onClick={() => handleCancelLeave(leave._id)}
                             className="text-xs text-red-600 hover:text-red-800 font-semibold hover:underline"
                           >
-                            Withdraw Request
+                            Withdraw
                           </button>
                         )}
                       </td>
@@ -254,14 +254,14 @@ const LeaveRequests = () => {
       {/* MODAL: APPLY FOR LEAVE */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-gray-100">
-            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-gray-50/50">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-gray-100 max-h-[90vh] flex flex-col">
+            <div className="px-5 sm:px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-gray-50/50 shrink-0">
               <h3 className="text-base font-bold text-gray-900">Apply for Time-Off / Leave</h3>
               <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600">
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+            <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1">
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1">Leave Category *</label>
                 <select
@@ -280,7 +280,7 @@ const LeaveRequests = () => {
                 </select>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 mb-1">Start Date *</label>
                   <input
@@ -305,7 +305,7 @@ const LeaveRequests = () => {
 
               {/* Time inputs for Short Leave or Half Day */}
               {isShortOrHalf && (
-                <div className="grid grid-cols-2 gap-4 bg-blue-50/50 p-3 rounded-xl border border-blue-100">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 bg-blue-50/50 p-3 rounded-xl border border-blue-100">
                   <div>
                     <label className="block text-xs font-semibold text-blue-900 mb-1">From Time</label>
                     <input

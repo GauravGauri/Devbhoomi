@@ -304,16 +304,16 @@ const AdminSettings = () => {
 
   return (
     <AdminLayout>
-      <header className="h-16 flex items-center justify-between px-8 bg-white border-b border-gray-200 shadow-xs">
+      <header className="min-h-16 py-3 px-4 sm:px-8 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white border-b border-gray-200 shadow-xs">
         <div>
           <h2 className="text-xl font-bold text-gray-900">System Configuration</h2>
           <p className="text-xs text-gray-500">Global shift hours, network IP allowlists, departments, and holiday calendar</p>
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto p-8 space-y-6">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 space-y-6">
         {/* Navigation Tabs */}
-        <div className="flex border-b border-gray-200 space-x-6">
+        <div className="flex border-b border-gray-200 space-x-4 sm:space-x-6 overflow-x-auto">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -321,7 +321,7 @@ const AdminSettings = () => {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`pb-3 text-sm font-semibold flex items-center border-b-2 transition-all ${
+                className={`pb-3 text-sm font-semibold flex items-center border-b-2 transition-all whitespace-nowrap shrink-0 ${
                   isActive
                     ? 'border-indigo-600 text-indigo-600'
                     : 'border-transparent text-gray-500 hover:text-gray-800 hover:border-gray-300'
@@ -341,7 +341,7 @@ const AdminSettings = () => {
 
         {/* TAB 1: ATTENDANCE RULES */}
         {activeTab === 'attendance' && (
-          <form onSubmit={handleSaveSettings} className="bg-white rounded-2xl shadow-xs border border-gray-200 p-8 space-y-6 max-w-3xl">
+          <form onSubmit={handleSaveSettings} className="bg-white rounded-2xl shadow-xs border border-gray-200 p-4 sm:p-8 space-y-6 max-w-3xl">
             <div>
               <h3 className="text-base font-bold text-gray-900">Attendance Policies & Shift Hours</h3>
               <p className="text-xs text-gray-500">Configure standard working hours and grace period thresholds for late check-in detection</p>
@@ -429,7 +429,7 @@ const AdminSettings = () => {
 
         {/* TAB 2: NETWORK SECURITY */}
         {activeTab === 'security' && (
-          <div className="bg-white rounded-2xl shadow-xs border border-gray-200 p-8 space-y-6 max-w-3xl">
+          <div className="bg-white rounded-2xl shadow-xs border border-gray-200 p-4 sm:p-8 space-y-6 max-w-3xl">
             <div>
               <h3 className="text-base font-bold text-gray-900">Dual-Factor Office Network Gate (Wi-Fi & IP Security)</h3>
               <p className="text-xs text-gray-500">
@@ -469,7 +469,7 @@ const AdminSettings = () => {
                   This is the public internet IP of your office Wi-Fi router. Every device (laptop, phone, PC) connected to this office Wi-Fi shares this IP and will be verified automatically.
                 </p>
               </div>
-              <div className="flex flex-col sm:flex-row gap-2 flex-shrink-0">
+              <div className="flex flex-col sm:flex-row gap-2 flex-shrink-0 w-full sm:w-auto">
                 <button
                   type="button"
                   onClick={handleQuickAddCurrentIP}
@@ -488,7 +488,7 @@ const AdminSettings = () => {
             </div>
 
             {/* OPTION 1: SPECIFIC WI-FI NETWORK NAMES */}
-            <div className="space-y-3 pt-2 p-5 bg-blue-50/30 rounded-xl border border-blue-100">
+            <div className="space-y-3 pt-2 p-4 sm:p-5 bg-blue-50/30 rounded-xl border border-blue-100">
               <div className="flex items-center space-x-2">
                 <Wifi className="w-4 h-4 text-blue-600" />
                 <label className="text-xs font-bold text-gray-900 uppercase tracking-wider">
@@ -500,7 +500,7 @@ const AdminSettings = () => {
               </p>
 
               {/* Add Wi-Fi Name Input Form */}
-              <form onSubmit={handleAddWifi} className="flex gap-2">
+              <form onSubmit={handleAddWifi} className="flex flex-col sm:flex-row gap-2">
                 <input
                   type="text"
                   value={newWifiInput}
@@ -508,7 +508,7 @@ const AdminSettings = () => {
                   placeholder="e.g. DevBhoomi-WiFi, Office-5G, Staff-Network"
                   className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none font-medium bg-white"
                 />
-                <Button type="submit" variant="secondary" size="sm" className="flex items-center">
+                <Button type="submit" variant="secondary" size="sm" className="flex items-center justify-center">
                   <Plus className="w-3.5 h-3.5 mr-1" /> Add Wi-Fi Name
                 </Button>
               </form>
@@ -540,7 +540,7 @@ const AdminSettings = () => {
             </div>
 
             {/* OPTION 2: SPECIFIC IP ADDRESSES */}
-            <div className="space-y-3 pt-2 p-5 bg-amber-50/30 rounded-xl border border-amber-100">
+            <div className="space-y-3 pt-2 p-4 sm:p-5 bg-amber-50/30 rounded-xl border border-amber-100">
               <div className="flex items-center space-x-2">
                 <Lock className="w-4 h-4 text-amber-600" />
                 <label className="text-xs font-bold text-gray-900 uppercase tracking-wider">
@@ -552,7 +552,7 @@ const AdminSettings = () => {
               </p>
 
               {/* Add IP Input Form */}
-              <form onSubmit={handleAddIP} className="flex gap-2">
+              <form onSubmit={handleAddIP} className="flex flex-col sm:flex-row gap-2">
                 <input
                   type="text"
                   value={newIPInput}
@@ -560,7 +560,7 @@ const AdminSettings = () => {
                   placeholder="e.g. 127.0.0.1, 192.168.1.1, 10.194.16.2"
                   className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none font-mono bg-white"
                 />
-                <Button type="submit" variant="secondary" size="sm" className="flex items-center">
+                <Button type="submit" variant="secondary" size="sm" className="flex items-center justify-center">
                   <Plus className="w-3.5 h-3.5 mr-1" /> Add IP
                 </Button>
               </form>
@@ -591,7 +591,7 @@ const AdminSettings = () => {
             </div>
 
             {/* OPTION 3: OFFICE GPS GEOFENCING & AUTO-BREAK BOUNDARY */}
-            <div className="space-y-4 pt-2 p-5 bg-emerald-50/40 rounded-xl border border-emerald-200">
+            <div className="space-y-4 pt-2 p-4 sm:p-5 bg-emerald-50/40 rounded-xl border border-emerald-200">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
                   <MapPin className="w-5 h-5 text-emerald-600 flex-shrink-0" />
@@ -632,7 +632,7 @@ const AdminSettings = () => {
                   size="sm"
                   onClick={handleCaptureCurrentLocation}
                   isLoading={capturingLocation}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center shadow-xs flex-shrink-0"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center shadow-xs flex-shrink-0 w-full sm:w-auto justify-center"
                 >
                   <MapPin className="w-3.5 h-3.5 mr-1" /> 📍 Capture Current Location
                 </Button>
@@ -713,16 +713,16 @@ const AdminSettings = () => {
 
               {/* Google Maps link preview if coordinates configured */}
               {settings.officeLatitude && settings.officeLongitude ? (
-                <div className="flex items-center justify-between bg-emerald-100/60 p-2.5 rounded-lg text-xs text-emerald-900">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-emerald-100/60 p-2.5 rounded-lg text-xs text-emerald-900">
                   <span className="font-semibold flex items-center">
-                    <CheckCircle2 className="w-4 h-4 mr-1.5 text-emerald-600" />
+                    <CheckCircle2 className="w-4 h-4 mr-1.5 text-emerald-600 shrink-0" />
                     Office Pin Active: {Number(settings.officeLatitude).toFixed(5)}, {Number(settings.officeLongitude).toFixed(5)} ({settings.geofenceRadiusMeters || 100}m radius)
                   </span>
                   <a
                     href={`https://www.google.com/maps?q=${settings.officeLatitude},${settings.officeLongitude}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-emerald-700 underline font-bold hover:text-emerald-800"
+                    className="text-emerald-700 underline font-bold hover:text-emerald-800 shrink-0"
                   >
                     View on Google Maps ↗
                   </a>
@@ -730,11 +730,11 @@ const AdminSettings = () => {
               ) : null}
             </div>
 
-            <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-4 border-t border-gray-100">
               <span className="text-xs text-gray-500 font-medium">
                 Saves Wi-Fi, IP, and Office GPS Geofencing rules.
               </span>
-              <Button onClick={handleSaveSettings} isLoading={saving} className="bg-indigo-600 hover:bg-indigo-700 text-white flex items-center">
+              <Button onClick={handleSaveSettings} isLoading={saving} className="bg-indigo-600 hover:bg-indigo-700 text-white flex items-center justify-center">
                 <Save className="w-4 h-4 mr-1.5" /> Save Security & Location Settings
               </Button>
             </div>
@@ -743,9 +743,9 @@ const AdminSettings = () => {
 
         {/* TAB 3: DEPARTMENTS */}
         {activeTab === 'departments' && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Create Dept Form */}
-            <form onSubmit={handleAddDepartment} className="bg-white rounded-2xl shadow-xs border border-gray-200 p-6 space-y-4 h-fit">
+            <form onSubmit={handleAddDepartment} className="bg-white rounded-2xl shadow-xs border border-gray-200 p-4 sm:p-6 space-y-4 h-fit">
               <h3 className="text-base font-bold text-gray-900">Add New Department</h3>
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1">Department Name *</label>
@@ -773,7 +773,7 @@ const AdminSettings = () => {
             </form>
 
             {/* Existing Depts List */}
-            <div className="md:col-span-2 bg-white rounded-2xl shadow-xs border border-gray-200 overflow-hidden">
+            <div className="lg:col-span-2 bg-white rounded-2xl shadow-xs border border-gray-200 overflow-hidden">
               <div className="p-4 border-b border-gray-200 bg-gray-50/50 flex items-center justify-between">
                 <h3 className="text-base font-bold text-gray-900">Configured Departments ({departments.length})</h3>
                 <Button variant="outline" size="sm" onClick={fetchDepartments} className="text-xs">
@@ -813,9 +813,9 @@ const AdminSettings = () => {
 
         {/* TAB 4: COMPANY HOLIDAYS */}
         {activeTab === 'holidays' && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Create Holiday Form */}
-            <form onSubmit={handleAddHoliday} className="bg-white rounded-2xl shadow-xs border border-gray-200 p-6 space-y-4 h-fit">
+            <form onSubmit={handleAddHoliday} className="bg-white rounded-2xl shadow-xs border border-gray-200 p-4 sm:p-6 space-y-4 h-fit">
               <h3 className="text-base font-bold text-gray-900">Add Holiday Event</h3>
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1">Holiday Name *</label>
@@ -864,7 +864,7 @@ const AdminSettings = () => {
             </form>
 
             {/* Existing Holidays List */}
-            <div className="md:col-span-2 bg-white rounded-2xl shadow-xs border border-gray-200 overflow-hidden">
+            <div className="lg:col-span-2 bg-white rounded-2xl shadow-xs border border-gray-200 overflow-hidden">
               <div className="p-4 border-b border-gray-200 bg-gray-50/50 flex items-center justify-between">
                 <h3 className="text-base font-bold text-gray-900">Scheduled Holidays ({holidays.length})</h3>
                 <Button variant="outline" size="sm" onClick={fetchHolidays} className="text-xs">

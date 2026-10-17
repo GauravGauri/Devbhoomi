@@ -61,77 +61,77 @@ const EmployeeAttendance = () => {
 
   return (
     <EmployeeLayout>
-      <header className="h-16 flex items-center justify-between px-8 bg-white border-b border-gray-200">
+      <header className="min-h-16 py-3 px-4 sm:px-8 bg-white border-b border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h2 className="text-xl font-semibold text-gray-800">My Attendance History</h2>
+          <h2 className="text-lg sm:text-xl font-semibold text-gray-800">My Attendance History</h2>
           <p className="text-xs text-gray-500">View and track all your logged punches, break deductions, and work sessions</p>
         </div>
-        <div className="flex items-center space-x-3">
-          <Button variant="outline" size="sm" onClick={fetchHistory} className="flex items-center">
+        <div className="flex items-center space-x-2 sm:space-x-3 flex-wrap gap-y-2">
+          <Button variant="outline" size="sm" onClick={fetchHistory} className="flex items-center text-xs">
             <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${loading ? 'animate-spin' : ''}`} /> Refresh
           </Button>
-          <Button size="sm" onClick={handleExportCSV} className="flex items-center">
+          <Button size="sm" onClick={handleExportCSV} className="flex items-center text-xs bg-blue-600 hover:bg-blue-700 text-white">
             <Download className="w-3.5 h-3.5 mr-1.5" /> Export CSV
           </Button>
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto p-8">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 space-y-6">
         {/* Metric Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-xl shadow-xs border border-gray-200 p-6 flex items-center">
-            <div className="w-12 h-12 rounded-xl bg-green-50 text-green-600 flex items-center justify-center mr-4">
-              <CheckCircle2 className="w-6 h-6" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+          <div className="bg-white rounded-xl shadow-xs border border-gray-200 p-4 sm:p-6 flex items-center">
+            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-green-50 text-green-600 flex items-center justify-center mr-3 sm:mr-4 shrink-0">
+              <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
             <div>
               <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Days Present</span>
-              <p className="text-2xl font-bold text-gray-900 mt-0.5">{summary.totalPresent}</p>
+              <p className="text-xl sm:text-2xl font-bold text-gray-900 mt-0.5">{summary.totalPresent}</p>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-xs border border-gray-200 p-6 flex items-center">
-            <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center mr-4">
-              <AlertCircle className="w-6 h-6" />
+          <div className="bg-white rounded-xl shadow-xs border border-gray-200 p-4 sm:p-6 flex items-center">
+            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center mr-3 sm:mr-4 shrink-0">
+              <AlertCircle className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
             <div>
               <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Late Check-ins</span>
-              <p className="text-2xl font-bold text-amber-600 mt-0.5">{summary.totalLate}</p>
+              <p className="text-xl sm:text-2xl font-bold text-amber-600 mt-0.5">{summary.totalLate}</p>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-xs border border-gray-200 p-6 flex items-center">
-            <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mr-4">
-              <Clock className="w-6 h-6" />
+          <div className="bg-white rounded-xl shadow-xs border border-gray-200 p-4 sm:p-6 flex items-center">
+            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mr-3 sm:mr-4 shrink-0">
+              <Clock className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
             <div>
               <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Net Work Hours</span>
-              <p className="text-2xl font-bold text-blue-600 mt-0.5">{summary.totalHours} hrs</p>
+              <p className="text-xl sm:text-2xl font-bold text-blue-600 mt-0.5">{summary.totalHours} hrs</p>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-xs border border-gray-200 p-6 flex items-center">
-            <div className="w-12 h-12 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center mr-4">
-              <Utensils className="w-6 h-6" />
+          <div className="bg-white rounded-xl shadow-xs border border-gray-200 p-4 sm:p-6 flex items-center">
+            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center mr-3 sm:mr-4 shrink-0">
+              <Utensils className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
             <div>
               <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Break Deducted</span>
-              <p className="text-2xl font-bold text-orange-600 mt-0.5">{summary.totalBreakHours || '0.0'} hrs</p>
+              <p className="text-xl sm:text-2xl font-bold text-orange-600 mt-0.5">{summary.totalBreakHours || '0.0'} hrs</p>
             </div>
           </div>
         </div>
 
         {/* Filters and Table */}
         <div className="bg-white rounded-xl shadow-xs border border-gray-200 overflow-hidden">
-          <div className="p-4 border-b border-gray-200 flex flex-wrap justify-between items-center bg-gray-50/50 gap-4">
-            <div className="flex items-center space-x-3">
-              <span className="text-sm font-medium text-gray-700 flex items-center">
-                <Calendar className="w-4 h-4 mr-1.5 text-gray-500" /> Select Month:
+          <div className="p-4 border-b border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center bg-gray-50/50 gap-3">
+            <div className="flex items-center space-x-3 w-full sm:w-auto">
+              <span className="text-sm font-medium text-gray-700 flex items-center shrink-0">
+                <Calendar className="w-4 h-4 mr-1.5 text-gray-500" /> Month:
               </span>
               <input
                 type="month"
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(e.target.value)}
-                className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium w-full sm:w-auto"
               />
             </div>
             <div className="text-xs text-gray-500 font-medium">
@@ -140,7 +140,7 @@ const EmployeeAttendance = () => {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
+            <table className="min-w-full divide-y divide-gray-200 min-w-[640px]">
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Date</th>

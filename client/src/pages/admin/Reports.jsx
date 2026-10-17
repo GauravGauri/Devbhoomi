@@ -174,17 +174,17 @@ const AdminReports = () => {
 
   return (
     <AdminLayout>
-      <header className="h-16 flex items-center justify-between px-8 bg-white border-b border-gray-200 shadow-xs">
+      <header className="min-h-16 py-3 px-4 sm:px-8 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white border-b border-gray-200 shadow-xs">
         <div>
           <h2 className="text-xl font-bold text-gray-900">Reports & Analytics Export</h2>
           <p className="text-xs text-gray-500">Generate, preview, and download structured CSV reports from live data</p>
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto p-8 space-y-8">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Card 1: Monthly Attendance */}
-          <div className="bg-white rounded-2xl shadow-xs border border-gray-200 p-6 flex flex-col justify-between">
+          <div className="bg-white rounded-2xl shadow-xs border border-gray-200 p-4 sm:p-6 flex flex-col justify-between">
             <div>
               <div className="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center mb-4">
                 <FileSpreadsheet className="w-6 h-6" />
@@ -227,7 +227,7 @@ const AdminReports = () => {
           </div>
 
           {/* Card 2: Leave Summary */}
-          <div className="bg-white rounded-2xl shadow-xs border border-gray-200 p-6 flex flex-col justify-between">
+          <div className="bg-white rounded-2xl shadow-xs border border-gray-200 p-4 sm:p-6 flex flex-col justify-between">
             <div>
               <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center mb-4">
                 <Calendar className="w-6 h-6" />
@@ -237,7 +237,7 @@ const AdminReports = () => {
                 Export employee leave applications, approvals, rejections, categories, and audit notes.
               </p>
 
-              <div className="mb-6 grid grid-cols-2 gap-3">
+              <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 mb-1">Year</label>
                   <input
@@ -287,7 +287,7 @@ const AdminReports = () => {
           </div>
 
           {/* Card 3: Late Arrivals */}
-          <div className="bg-white rounded-2xl shadow-xs border border-gray-200 p-6 flex flex-col justify-between">
+          <div className="bg-white rounded-2xl shadow-xs border border-gray-200 p-4 sm:p-6 flex flex-col justify-between">
             <div>
               <div className="w-12 h-12 rounded-xl bg-red-50 text-red-600 flex items-center justify-center mb-4">
                 <Clock className="w-6 h-6" />
@@ -337,14 +337,14 @@ const AdminReports = () => {
 
       {/* PREVIEW MODAL */}
       {previewData.open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-3 sm:p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[85vh] flex flex-col overflow-hidden border border-gray-200">
-            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-gray-50/50">
+            <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gray-50/50 shrink-0">
               <div>
                 <h3 className="text-base font-bold text-gray-900">{previewData.title}</h3>
                 <p className="text-xs text-gray-500">Live dataset contains {previewData.rows.length} records</p>
               </div>
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center gap-2">
                 <Button
                   size="sm"
                   onClick={() => downloadCSV(previewData.headers, previewData.rows, previewData.filename)}
@@ -361,34 +361,36 @@ const AdminReports = () => {
               </div>
             </div>
 
-            <div className="flex-1 overflow-auto p-6">
+            <div className="flex-1 overflow-auto p-3 sm:p-6">
               {previewData.rows.length === 0 ? (
                 <div className="py-12 text-center text-gray-400 text-sm">
                   No records match the current criteria to preview.
                 </div>
               ) : (
-                <table className="min-w-full divide-y divide-gray-200 text-xs">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      {previewData.headers.map((h, i) => (
-                        <th key={i} className="px-3 py-2.5 text-left font-semibold text-gray-600 uppercase">
-                          {h}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {previewData.rows.slice(0, 50).map((row, rIdx) => (
-                      <tr key={rIdx} className="hover:bg-gray-50">
-                        {row.map((cell, cIdx) => (
-                          <td key={cIdx} className="px-3 py-2 whitespace-nowrap text-gray-700 font-mono">
-                            {cell || '-'}
-                          </td>
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[640px] divide-y divide-gray-200 text-xs">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        {previewData.headers.map((h, i) => (
+                          <th key={i} className="px-3 py-2.5 text-left font-semibold text-gray-600 uppercase">
+                            {h}
+                          </th>
                         ))}
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {previewData.rows.slice(0, 50).map((row, rIdx) => (
+                        <tr key={rIdx} className="hover:bg-gray-50">
+                          {row.map((cell, cIdx) => (
+                            <td key={cIdx} className="px-3 py-2 whitespace-nowrap text-gray-700 font-mono">
+                              {cell || '-'}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               )}
               {previewData.rows.length > 50 && (
                 <div className="text-center py-2 text-xs text-gray-500 bg-gray-50 border-t">
@@ -397,7 +399,7 @@ const AdminReports = () => {
               )}
             </div>
 
-            <div className="px-6 py-3 border-t border-gray-100 bg-gray-50 flex justify-end">
+            <div className="px-4 sm:px-6 py-3 border-t border-gray-100 bg-gray-50 flex justify-end shrink-0">
               <Button variant="outline" size="sm" onClick={() => setPreviewData({ ...previewData, open: false })}>
                 Close Preview
               </Button>

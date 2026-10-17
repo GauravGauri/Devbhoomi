@@ -89,23 +89,23 @@ const Profile = () => {
 
   return (
     <EmployeeLayout>
-      <header className="h-16 flex items-center justify-between px-8 bg-white border-b border-gray-200 shadow-xs">
+      <header className="min-h-16 py-3 px-4 sm:px-8 bg-white border-b border-gray-200 shadow-xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h2 className="text-xl font-bold text-gray-900">My Employee Profile</h2>
+          <h2 className="text-lg sm:text-xl font-bold text-gray-900">My Employee Profile</h2>
           <p className="text-xs text-gray-500">Manage your personal credentials, contact info, and security credentials</p>
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto p-8">
-        <div className="bg-white rounded-2xl shadow-xs border border-gray-200 p-8 max-w-3xl space-y-8">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+        <div className="bg-white rounded-2xl shadow-xs border border-gray-200 p-5 sm:p-8 max-w-3xl space-y-6 sm:space-y-8">
           {/* Header Card */}
-          <div className="flex flex-wrap items-center justify-between gap-6">
-            <div className="flex items-center space-x-6">
-              <div className="h-20 w-20 rounded-2xl bg-blue-100 text-blue-700 flex items-center justify-center font-extrabold text-3xl shadow-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+            <div className="flex items-center space-x-4 sm:space-x-6">
+              <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-2xl bg-blue-100 text-blue-700 flex items-center justify-center font-extrabold text-2xl sm:text-3xl shadow-xs shrink-0">
                 {user?.name?.charAt(0) || 'E'}
               </div>
               <div>
-                <h3 className="text-2xl font-extrabold text-gray-900 leading-tight">{user?.name || 'Employee'}</h3>
+                <h3 className="text-xl sm:text-2xl font-extrabold text-gray-900 leading-tight">{user?.name || 'Employee'}</h3>
                 <p className="text-sm font-medium text-blue-600">{user?.designation || 'Staff Member'}</p>
                 <div className="mt-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-800">
                   <CheckCircle2 className="w-3.5 h-3.5 mr-1 text-green-600" /> Active Account
@@ -113,18 +113,18 @@ const Profile = () => {
               </div>
             </div>
 
-            <div className="flex space-x-3">
-              <Button variant="outline" size="sm" onClick={() => setShowPasswordModal(true)} className="flex items-center text-xs">
+            <div className="flex flex-wrap gap-2 sm:gap-3 w-full sm:w-auto">
+              <Button variant="outline" size="sm" onClick={() => setShowPasswordModal(true)} className="flex items-center text-xs flex-1 sm:flex-none justify-center">
                 <KeyRound className="w-3.5 h-3.5 mr-1.5 text-amber-600" /> Change Password
               </Button>
-              <Button size="sm" onClick={openEdit} className="flex items-center text-xs bg-blue-600 hover:bg-blue-700 text-white">
+              <Button size="sm" onClick={openEdit} className="flex items-center text-xs bg-blue-600 hover:bg-blue-700 text-white flex-1 sm:flex-none justify-center">
                 <Edit2 className="w-3.5 h-3.5 mr-1.5" /> Edit Profile
               </Button>
             </div>
           </div>
 
           {/* Details Grid */}
-          <div className="border-t border-gray-100 pt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="border-t border-gray-100 pt-6 sm:pt-8 grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
             <div className="bg-gray-50/60 p-4 rounded-xl border border-gray-100">
               <div className="flex items-center space-x-2 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
                 <Shield className="w-3.5 h-3.5 text-gray-400" />
@@ -181,14 +181,14 @@ const Profile = () => {
       {/* MODAL 1: EDIT PROFILE */}
       {showEditModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-gray-100">
-            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-gray-50/50">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-gray-100 max-h-[90vh] flex flex-col">
+            <div className="px-5 sm:px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-gray-50/50 shrink-0">
               <h3 className="text-base font-bold text-gray-900">Edit Profile Details</h3>
               <button onClick={() => setShowEditModal(false)} className="text-gray-400 hover:text-gray-600">
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <form onSubmit={handleUpdateProfile} className="p-6 space-y-4">
+            <form onSubmit={handleUpdateProfile} className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1">
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1">Full Name *</label>
                 <input
@@ -224,14 +224,14 @@ const Profile = () => {
       {/* MODAL 2: CHANGE PASSWORD */}
       {showPasswordModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-gray-100">
-            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-gray-50/50">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-gray-100 max-h-[90vh] flex flex-col">
+            <div className="px-5 sm:px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-gray-50/50 shrink-0">
               <h3 className="text-base font-bold text-gray-900">Change Security Password</h3>
               <button onClick={() => setShowPasswordModal(false)} className="text-gray-400 hover:text-gray-600">
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <form onSubmit={handleChangePassword} className="p-6 space-y-4">
+            <form onSubmit={handleChangePassword} className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1">
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1">Current Password *</label>
                 <input

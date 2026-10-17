@@ -161,12 +161,12 @@ const AdminAttendance = () => {
 
   return (
     <AdminLayout>
-      <header className="h-16 flex items-center justify-between px-8 bg-white border-b border-gray-200 shadow-xs">
+      <header className="min-h-16 py-3 px-4 sm:px-8 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white border-b border-gray-200 shadow-xs">
         <div>
           <h2 className="text-xl font-bold text-gray-900">Attendance Log Ledger</h2>
           <p className="text-xs text-gray-500">Live operational ledger of all employee check-ins, check-outs, and time tracking</p>
         </div>
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
           <Button variant="outline" size="sm" onClick={fetchAttendances} className="flex items-center text-xs">
             <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${loading ? 'animate-spin' : ''}`} /> Refresh
           </Button>
@@ -179,7 +179,7 @@ const AdminAttendance = () => {
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto p-8 space-y-6">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 space-y-6">
         {/* Metric Summary Bar */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="bg-white rounded-xl border border-gray-200 p-4 flex items-center justify-between">
@@ -213,9 +213,9 @@ const AdminAttendance = () => {
 
         {/* Filters and Table */}
         <div className="bg-white rounded-xl shadow-xs border border-gray-200 overflow-hidden">
-          <div className="p-4 border-b border-gray-200 flex flex-wrap justify-between items-center bg-gray-50/50 gap-4">
-            <form onSubmit={handleSearchSubmit} className="flex flex-wrap items-center gap-3">
-              <div className="relative w-64">
+          <div className="p-4 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between bg-gray-50/50 gap-4">
+            <form onSubmit={handleSearchSubmit} className="flex flex-col sm:flex-row sm:items-center gap-3 w-full sm:w-auto">
+              <div className="relative w-full sm:w-64">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Search className="h-4 w-4 text-gray-400" />
                 </div>
@@ -228,49 +228,51 @@ const AdminAttendance = () => {
                 />
               </div>
 
-              {/* Date Filter */}
-              <div className="flex items-center space-x-1">
-                <input
-                  type="date"
-                  value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
-                />
-                {selectedDate && (
+              <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                {/* Date Filter */}
+                <div className="flex items-center space-x-1">
+                  <input
+                    type="date"
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
+                  />
+                  {selectedDate && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedDate('')}
+                      className="p-1 text-gray-400 hover:text-gray-600"
+                      title="Clear Date"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
                   <button
                     type="button"
-                    onClick={() => setSelectedDate('')}
-                    className="p-1 text-gray-400 hover:text-gray-600"
-                    title="Clear Date"
+                    onClick={() => setSelectedDate(new Date().toISOString().slice(0, 10))}
+                    className="text-xs text-indigo-600 hover:text-indigo-800 font-semibold px-2 py-1 bg-indigo-50 rounded-md"
                   >
-                    <X className="w-4 h-4" />
+                    Today
                   </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => setSelectedDate(new Date().toISOString().slice(0, 10))}
-                  className="text-xs text-indigo-600 hover:text-indigo-800 font-semibold px-2 py-1 bg-indigo-50 rounded-md"
+                </div>
+
+                {/* Status Filter */}
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 >
-                  Today
-                </button>
+                  <option value="All">All Statuses</option>
+                  <option value="On Time">On Time</option>
+                  <option value="Late">Late</option>
+                  <option value="Present">Present</option>
+                  <option value="Half Day">Half Day</option>
+                </select>
+
+                <Button type="submit" size="sm" variant="secondary" className="text-xs">
+                  Filter
+                </Button>
               </div>
-
-              {/* Status Filter */}
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              >
-                <option value="All">All Statuses</option>
-                <option value="On Time">On Time</option>
-                <option value="Late">Late</option>
-                <option value="Present">Present</option>
-                <option value="Half Day">Half Day</option>
-              </select>
-
-              <Button type="submit" size="sm" variant="secondary" className="text-xs">
-                Filter
-              </Button>
             </form>
 
             <span className="text-xs font-semibold text-gray-500">
@@ -279,7 +281,7 @@ const AdminAttendance = () => {
           </div>
 
           <div className="overflow-x-auto min-h-[300px]">
-            <table className="min-w-full divide-y divide-gray-200">
+            <table className="w-full min-w-[760px] divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Employee</th>
@@ -373,15 +375,15 @@ const AdminAttendance = () => {
 
       {/* MODAL: MANUAL PUNCH ENTRY */}
       {showManualModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-gray-100">
-            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-gray-50/50">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-3 sm:p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden border border-gray-100">
+            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-gray-50/50 shrink-0">
               <h3 className="text-base font-bold text-gray-900">Record Attendance Punch</h3>
               <button onClick={() => setShowManualModal(false)} className="text-gray-400 hover:text-gray-600">
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <form onSubmit={handleManualPunchSubmit} className="p-6 space-y-4">
+            <form onSubmit={handleManualPunchSubmit} className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1">
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1">Select Employee *</label>
                 <select
@@ -410,7 +412,7 @@ const AdminAttendance = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 mb-1">Check In Time</label>
                   <input
@@ -444,7 +446,7 @@ const AdminAttendance = () => {
                 <p className="text-[11px] text-gray-400 mt-0.5">Deducted from gross duration to determine net working hours.</p>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 mb-1">Attendance Type</label>
                   <select
@@ -457,7 +459,7 @@ const AdminAttendance = () => {
                     <option value="Short Leave">Short Leave</option>
                   </select>
                 </div>
-                <div className="flex items-center pt-5">
+                <div className="flex items-center pt-2 sm:pt-5">
                   <label className="flex items-center space-x-2 cursor-pointer">
                     <input
                       type="checkbox"

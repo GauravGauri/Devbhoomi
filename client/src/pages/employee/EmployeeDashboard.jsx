@@ -339,16 +339,16 @@ const EmployeeDashboard = () => {
 
   return (
     <EmployeeLayout>
-      <header className="h-16 flex items-center justify-between px-8 bg-white border-b border-gray-200 shadow-xs z-10">
+      <header className="min-h-16 py-3 px-4 sm:px-8 bg-white border-b border-gray-200 shadow-xs z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h2 className="text-xl font-bold text-gray-900">
+          <h2 className="text-lg sm:text-xl font-bold text-gray-900">
             Welcome back, {user?.name || 'Employee'}
           </h2>
           <p className="text-xs text-gray-500">
             {user?.designation || 'Staff Member'} • Employee ID: {user?.employeeId}
           </p>
         </div>
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-2 sm:space-x-3 flex-wrap gap-y-2">
           <Link to="/employee/leaves">
             <Button size="sm" variant="outline" className="text-xs flex items-center">
               <FileText className="w-3.5 h-3.5 mr-1" /> Request Leave
@@ -362,16 +362,16 @@ const EmployeeDashboard = () => {
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto p-8 space-y-8">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8">
         {/* 1. Outside Office Boundary Warning Banner */}
         {isOutsideGeofence && (
-          <div className="bg-gradient-to-r from-red-600 via-rose-600 to-red-700 text-white rounded-2xl p-5 shadow-lg flex flex-col sm:flex-row items-center justify-between gap-4 border border-red-500">
-            <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-md text-white flex items-center justify-center flex-shrink-0 animate-pulse shadow-md">
-                <MapPin className="w-6 h-6" />
+          <div className="bg-gradient-to-r from-red-600 via-rose-600 to-red-700 text-white rounded-2xl p-4 sm:p-5 shadow-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border border-red-500">
+            <div className="flex items-start sm:items-center space-x-3 sm:space-x-4">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-white/20 backdrop-blur-md text-white flex items-center justify-center flex-shrink-0 animate-pulse shadow-md mt-0.5 sm:mt-0">
+                <MapPin className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
               <div>
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-2 flex-wrap gap-y-1">
                   <span className="px-2.5 py-0.5 rounded-full bg-white/30 text-white text-[11px] font-black uppercase tracking-wide">
                     Outside Office Boundary
                   </span>
@@ -379,10 +379,10 @@ const EmployeeDashboard = () => {
                     {geoStatus.distanceMeters !== null ? `${geoStatus.distanceMeters} meters away` : 'Boundary Exceeded'}
                   </span>
                 </div>
-                <h3 className="text-lg font-black mt-0.5">
+                <h3 className="text-base sm:text-lg font-black mt-0.5">
                   You are outside {geoStatus.officeLocation?.name || 'the office premise'}
                 </h3>
-                <p className="text-xs text-red-100">
+                <p className="text-xs text-red-100 mt-0.5 leading-relaxed">
                   Allowed boundary radius is {geoStatus.allowedRadiusMeters}m. Check-in, Breakover (Resume), and Check-out are locked until you are physically inside the office.
                   {attendance?.checkIn && !attendance?.checkOut && ' Your active shift is placed on Automatic Break.'}
                 </p>
@@ -393,7 +393,7 @@ const EmployeeDashboard = () => {
               size="sm"
               onClick={() => fetchAttendanceAndNetwork(false)}
               isLoading={geoRefreshing}
-              className="bg-white text-red-700 hover:bg-red-50 font-bold text-xs shadow-md flex-shrink-0 border-0"
+              className="bg-white text-red-700 hover:bg-red-50 font-bold text-xs shadow-md flex-shrink-0 border-0 w-full sm:w-auto"
             >
               <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Re-check Location
             </Button>
@@ -402,13 +402,13 @@ const EmployeeDashboard = () => {
 
         {/* 2. Office Wi-Fi Not Connected Warning Banner (Only if Geofencing is not active) */}
         {!geoStatus?.geofenceEnabled && networkStatus?.restrictionEnabled && !networkStatus?.authorized && (
-          <div className="bg-red-50 border-2 border-red-400 text-red-950 rounded-2xl p-5 shadow-lg flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 rounded-xl bg-red-600 text-white flex items-center justify-center flex-shrink-0 animate-pulse shadow-md shadow-red-600/30">
-                <WifiOff className="w-6 h-6" />
+          <div className="bg-red-50 border-2 border-red-400 text-red-950 rounded-2xl p-4 sm:p-5 shadow-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-start sm:items-center space-x-3 sm:space-x-4">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-red-600 text-white flex items-center justify-center flex-shrink-0 animate-pulse shadow-md shadow-red-600/30 mt-0.5 sm:mt-0">
+                <WifiOff className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
               <div>
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-2 flex-wrap gap-y-1">
                   <span className="px-2.5 py-0.5 rounded-full bg-red-600 text-white text-[11px] font-black uppercase tracking-wide">
                     Network Restricted
                   </span>
@@ -416,10 +416,10 @@ const EmployeeDashboard = () => {
                     {networkStatus?.clientWifiName ? `Wi-Fi: "${networkStatus.clientWifiName}" not authorized` : 'Office Wi-Fi not connected'}
                   </span>
                 </div>
-                <h3 className="text-lg font-black text-red-900 mt-0.5">
+                <h3 className="text-base sm:text-lg font-black text-red-900 mt-0.5">
                   Office Wi-Fi Not Connected
                 </h3>
-                <p className="text-xs text-red-700">
+                <p className="text-xs text-red-700 mt-0.5 leading-relaxed">
                   Punch-in, Punch-out, and Lunch Breaks are locked. Please connect to authorized office Wi-Fi or office IP address.
                 </p>
               </div>
@@ -428,7 +428,7 @@ const EmployeeDashboard = () => {
             <Button
               size="sm"
               onClick={() => fetchAttendanceAndNetwork(false)}
-              className="bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-sm flex-shrink-0"
+              className="bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-sm flex-shrink-0 w-full sm:w-auto"
             >
               <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Re-check Network
             </Button>
@@ -437,17 +437,17 @@ const EmployeeDashboard = () => {
 
         {/* 3. Break Notification Alert Banner (Auto-Break vs Standard Lunch Break) */}
         {attendance?.isOnBreak && (
-          <div className={`rounded-2xl p-5 shadow-lg flex flex-col sm:flex-row items-center justify-between gap-4 border ${
+          <div className={`rounded-2xl p-4 sm:p-5 shadow-lg flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 border ${
             isAutoBreak
               ? 'bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 text-white border-red-400'
               : 'bg-gradient-to-r from-amber-500 to-orange-500 text-white border-amber-400'
           }`}>
-            <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center flex-shrink-0 animate-pulse">
-                {isAutoBreak ? <MapPin className="w-6 h-6 text-white" /> : <Utensils className="w-6 h-6 text-white" />}
+            <div className="flex items-start sm:items-center space-x-3 sm:space-x-4">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center flex-shrink-0 animate-pulse mt-0.5 sm:mt-0">
+                {isAutoBreak ? <MapPin className="w-5 h-5 sm:w-6 sm:h-6 text-white" /> : <Utensils className="w-5 h-5 sm:w-6 sm:h-6 text-white" />}
               </div>
               <div>
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-2 flex-wrap gap-y-1">
                   <span className="px-2.5 py-0.5 rounded-full bg-white/30 text-white text-[11px] font-extrabold uppercase tracking-wide">
                     {isAutoBreak ? 'Auto Break (Out of Office)' : 'Lunch Break Active'}
                   </span>
@@ -455,10 +455,10 @@ const EmployeeDashboard = () => {
                     Started at {new Date(attendance.currentBreakStart).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </span>
                 </div>
-                <h3 className="text-lg font-extrabold mt-0.5">
+                <h3 className="text-base sm:text-lg font-extrabold mt-0.5">
                   {isAutoBreak ? 'Shift Paused: You left office premises' : 'Working hours are currently paused'}
                 </h3>
-                <p className="text-xs text-white/90">
+                <p className="text-xs text-white/90 mt-0.5 leading-relaxed">
                   {isAutoBreak
                     ? `You are ${geoStatus?.distanceMeters !== null ? `${geoStatus.distanceMeters}m away from office` : 'outside office'}. Working hours are paused and deducted until you return to office.`
                     : 'Break time is being counted and automatically deducted from your daily shift hours until you resume.'}
@@ -466,8 +466,8 @@ const EmployeeDashboard = () => {
               </div>
             </div>
 
-            <div className="flex items-center space-x-4">
-              <div className="text-center sm:text-right bg-black/10 px-4 py-2 rounded-xl border border-white/10">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
+              <div className="text-center bg-black/10 px-4 py-2 rounded-xl border border-white/10">
                 <span className="block text-[10px] font-bold text-amber-100 uppercase tracking-widest">Break Duration</span>
                 <span className="text-2xl font-black font-mono tracking-tight">{formattedBreakTimer}</span>
               </div>
@@ -475,7 +475,7 @@ const EmployeeDashboard = () => {
                 <Button
                   size="md"
                   onClick={() => toast.error(`Cannot resume work: You are outside office boundary (${geoStatus.distanceMeters}m away). Return inside office premise to resume duty.`)}
-                  className="bg-white/80 hover:bg-white text-red-700 font-extrabold shadow-md border-0 text-xs py-3"
+                  className="bg-white/80 hover:bg-white text-red-700 font-extrabold shadow-md border-0 text-xs py-3 w-full sm:w-auto"
                 >
                   <MapPin className="w-4 h-4 mr-1.5 text-red-600" /> Return to Office to Resume
                 </Button>
@@ -484,7 +484,7 @@ const EmployeeDashboard = () => {
                   size="md"
                   onClick={handleEndBreak}
                   isLoading={breakLoading}
-                  className="bg-white text-orange-700 hover:bg-amber-50 font-extrabold shadow-md border-0"
+                  className="bg-white text-orange-700 hover:bg-amber-50 font-extrabold shadow-md border-0 w-full sm:w-auto"
                 >
                   <Play className="w-4 h-4 mr-1.5 fill-current" /> End Break & Resume
                 </Button>
@@ -493,10 +493,10 @@ const EmployeeDashboard = () => {
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
           {/* Card 1: Live Punch Station */}
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-2xl shadow-xs border border-gray-200 p-8 flex flex-col items-center relative overflow-hidden text-center">
+            <div className="bg-white rounded-2xl shadow-xs border border-gray-200 p-5 sm:p-8 flex flex-col items-center relative overflow-hidden text-center">
               <div className="absolute top-0 left-0 w-full h-2 bg-blue-600"></div>
 
               <span className="text-[11px] font-bold text-gray-400 tracking-widest uppercase mb-4">
@@ -506,7 +506,7 @@ const EmployeeDashboard = () => {
               <div className="text-sm font-semibold text-gray-600 mb-2">{currentDateFormatted}</div>
 
               {/* Live Ticking Clock */}
-              <div className="text-4xl font-extrabold text-gray-900 mb-6 font-mono tracking-tight">
+              <div className="text-3xl sm:text-4xl font-extrabold text-gray-900 mb-6 font-mono tracking-tight">
                 {currentTime.toLocaleTimeString('en-US', { hour12: true })}
               </div>
 
@@ -517,7 +517,7 @@ const EmployeeDashboard = () => {
                     <Button
                       size="lg"
                       onClick={() => toast.error(`Outside office boundary (${geoStatus.distanceMeters}m away from ${geoStatus.officeLocation?.name || 'Office'}). You must be inside ${geoStatus.allowedRadiusMeters}m to punch in.`)}
-                      className="w-full text-xs font-bold rounded-xl py-5 bg-red-50 hover:bg-red-100 text-red-700 border-2 border-red-300 shadow-none transition-all flex items-center justify-center"
+                      className="w-full text-xs font-bold rounded-xl py-4 sm:py-5 bg-red-50 hover:bg-red-100 text-red-700 border-2 border-red-300 shadow-none transition-all flex items-center justify-center leading-snug"
                     >
                       <MapPin className="w-4 h-4 mr-2 text-red-600 flex-shrink-0" />
                       <span>OUTSIDE OFFICE BOUNDARY ({geoStatus.distanceMeters}M AWAY - PUNCH LOCKED)</span>
