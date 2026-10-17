@@ -157,6 +157,13 @@ const AdminSettings = () => {
     });
     setNewIPInput('');
     toast.success(`Added IP "${ip}" to allowlist`);
+
+    if (ip.startsWith('192.168.') || ip.startsWith('10.') || ip.startsWith('172.')) {
+      toast('Note: ' + ip + ' is a local private IP. Cloud apps on Vercel/Render check the Office Wi-Fi Public IP (' + (currentNetInfo?.clientIP || 'shown above') + '). Be sure your public IP is also added!', {
+        icon: 'ℹ️',
+        duration: 7000,
+      });
+    }
   };
 
   const handleRemoveIP = (ipToRemove) => {
@@ -428,30 +435,33 @@ const AdminSettings = () => {
             </div>
 
             {/* Live Detection Helper Card for Admin */}
-            <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+            <div className="bg-indigo-50/70 border border-indigo-200 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
               <div>
-                <span className="font-bold text-gray-700 flex items-center">
-                  <Info className="w-3.5 h-3.5 mr-1 text-indigo-600" /> Current Admin Connection:
+                <span className="font-bold text-indigo-900 flex items-center">
+                  <Info className="w-3.5 h-3.5 mr-1 text-indigo-600" /> Detected Office Wi-Fi Public IP:
                 </span>
-                <span className="text-gray-500 mt-0.5 block font-mono">
-                  IP: <strong className="text-gray-800">{currentNetInfo?.clientIP || 'Detecting...'}</strong>
+                <span className="text-gray-600 mt-0.5 block font-mono">
+                  IP: <strong className="text-indigo-900 text-sm">{currentNetInfo?.clientIP || 'Detecting...'}</strong>
                   {currentNetInfo?.clientWifiName ? ` • Wi-Fi: ${currentNetInfo.clientWifiName}` : ''}
                 </span>
+                <p className="text-[11px] text-indigo-700/80 mt-1">
+                  This is the public internet IP of your office Wi-Fi router. Every device (laptop, phone, PC) connected to this office Wi-Fi shares this IP and will be verified automatically.
+                </p>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2 flex-shrink-0">
                 <button
                   type="button"
                   onClick={handleQuickAddCurrentIP}
-                  className="px-2.5 py-1 bg-white hover:bg-indigo-50 border border-gray-300 rounded text-indigo-700 font-semibold text-[11px]"
+                  className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-xs shadow-xs transition-colors flex items-center justify-center"
                 >
-                  + Add Current IP
+                  + Add Current Office IP
                 </button>
                 <button
                   type="button"
                   onClick={handleQuickAddCurrentWifi}
-                  className="px-2.5 py-1 bg-white hover:bg-indigo-50 border border-gray-300 rounded text-indigo-700 font-semibold text-[11px]"
+                  className="px-3 py-1.5 bg-white hover:bg-indigo-50 border border-indigo-300 text-indigo-700 rounded-lg font-bold text-xs shadow-xs transition-colors flex items-center justify-center"
                 >
-                  + Add Current Wi-Fi
+                  + Add Current Wi-Fi Name
                 </button>
               </div>
             </div>

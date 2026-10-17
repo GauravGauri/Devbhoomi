@@ -158,99 +158,106 @@ const EmployeeLayout = ({ children }) => {
               DevBhoomi security policy requires all employee portal pages to run exclusively on the authorized office Wi-Fi network or IP address set by Admin.
             </p>
 
-            {/* Status Breakdown Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-              {/* Option 1: Wi-Fi Name Verification */}
-              <div className="bg-slate-900/60 rounded-xl p-4 border border-slate-700/60 flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center">
-                      <Wifi className="w-3.5 h-3.5 mr-1.5 text-blue-400" /> Option 1: Wi-Fi Name
-                    </span>
-                    <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full ${networkStatus.wifiMatches ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-300'}`}>
-                      {networkStatus.wifiMatches ? 'Matched ✓' : 'Not Matched ✗'}
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-300 mb-1">
-                    Current: <span className="font-mono text-white font-semibold">{networkStatus.clientWifiName || 'Not Set'}</span>
-                  </p>
-                  <div className="mt-2 text-[11px] text-slate-400">
-                    <span className="block font-medium mb-1">Allowed Wi-Fi Networks:</span>
-                    <div className="flex flex-wrap gap-1">
-                      {networkStatus.allowedWifiNames && networkStatus.allowedWifiNames.length > 0 ? (
-                        networkStatus.allowedWifiNames.map((name) => (
-                          <button
-                            key={name}
-                            type="button"
-                            onClick={() => handleSelectWifiChip(name)}
-                            className="px-2 py-0.5 rounded bg-slate-800 hover:bg-blue-600/30 text-blue-300 font-mono text-[10px] border border-slate-700 transition-colors"
-                            title="Click to select this Wi-Fi name"
-                          >
-                            {name}
-                          </button>
-                        ))
-                      ) : (
-                        <span className="text-slate-500 italic">None configured</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
+            {/* Status Breakdown: Dynamically show only the verification methods set by Admin */}
+            {(() => {
+              const hasConfiguredWifi = Boolean(networkStatus.allowedWifiNames && networkStatus.allowedWifiNames.length > 0);
+              const hasConfiguredIP = Boolean(networkStatus.allowedIPs && networkStatus.allowedIPs.length > 0);
 
-              {/* Option 2: IP Address Verification */}
-              <div className="bg-slate-900/60 rounded-xl p-4 border border-slate-700/60 flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center">
-                      <Lock className="w-3.5 h-3.5 mr-1.5 text-amber-400" /> Option 2: IP Address
-                    </span>
-                    <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full ${networkStatus.ipMatches ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-300'}`}>
-                      {networkStatus.ipMatches ? 'Matched ✓' : 'Not Matched ✗'}
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-300 mb-1">
-                    Your IP: <span className="font-mono text-white font-semibold">{networkStatus.clientIP || 'Unknown'}</span>
-                  </p>
-                  <div className="mt-2 text-[11px] text-slate-400">
-                    <span className="block font-medium mb-1">Allowed IP Addresses:</span>
-                    <div className="flex flex-wrap gap-1">
-                      {networkStatus.allowedIPs && networkStatus.allowedIPs.length > 0 ? (
-                        networkStatus.allowedIPs.map((ip) => (
-                          <span key={ip} className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-mono text-[10px] border border-slate-700">
-                            {ip}
-                          </span>
-                        ))
-                      ) : (
-                        <span className="text-slate-500 italic">None configured</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+              return (
+                <div className="space-y-4 mb-6">
+                  <div className={`grid ${hasConfiguredWifi && hasConfiguredIP ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'} gap-4`}>
+                    {/* Option 1: Wi-Fi Name Verification (Only if Admin configured Wi-Fi names) */}
+                    {hasConfiguredWifi && (
+                      <div className="bg-slate-900/60 rounded-xl p-4 border border-slate-700/60 flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center">
+                              <Wifi className="w-3.5 h-3.5 mr-1.5 text-blue-400" /> Wi-Fi Name Verification
+                            </span>
+                            <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full ${networkStatus.wifiMatches ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-300'}`}>
+                              {networkStatus.wifiMatches ? 'Matched ✓' : 'Not Matched ✗'}
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-300 mb-1">
+                            Detected Wi-Fi: <span className="font-mono text-white font-semibold">{networkStatus.clientWifiName || 'Not Set'}</span>
+                          </p>
+                          <div className="mt-2 text-[11px] text-slate-400">
+                            <span className="block font-medium mb-1">Allowed Wi-Fi Networks:</span>
+                            <div className="flex flex-wrap gap-1">
+                              {networkStatus.allowedWifiNames.map((name) => (
+                                <button
+                                  key={name}
+                                  type="button"
+                                  onClick={() => handleSelectWifiChip(name)}
+                                  className="px-2 py-0.5 rounded bg-slate-800 hover:bg-blue-600/30 text-blue-300 font-mono text-[10px] border border-slate-700 transition-colors"
+                                  title="Click to select this Wi-Fi name"
+                                >
+                                  {name}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
-            {/* Wi-Fi Name Input verification form */}
-            <form onSubmit={handleVerifyWifi} className="bg-slate-900/80 rounded-xl p-4 border border-slate-700 mb-6 space-y-3">
-              <label className="block text-xs font-semibold text-slate-300">
-                Connected to office Wi-Fi? Enter or confirm your Wi-Fi Network Name:
-              </label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={wifiInput}
-                  onChange={(e) => setWifiInput(e.target.value)}
-                  placeholder="e.g. DevBhoomi-WiFi, Office-Network"
-                  className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
-                />
-                <button
-                  type="submit"
-                  disabled={isVerifyingWifi}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white text-xs font-bold rounded-lg transition-colors flex items-center justify-center shadow-md shadow-blue-600/30"
-                >
-                  {isVerifyingWifi ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : 'Verify Wi-Fi'}
-                </button>
-              </div>
-            </form>
+                    {/* Option 2: IP Address Verification (Only if Admin configured IPs) */}
+                    {hasConfiguredIP && (
+                      <div className="bg-slate-900/60 rounded-xl p-4 border border-slate-700/60 flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center">
+                              <Lock className="w-3.5 h-3.5 mr-1.5 text-amber-400" /> Office Wi-Fi IP Verification
+                            </span>
+                            <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full ${networkStatus.ipMatches ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-300'}`}>
+                              {networkStatus.ipMatches ? 'Matched ✓' : 'Not Matched ✗'}
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-300 mb-1">
+                            Your Connected IP: <span className="font-mono text-white font-bold">{networkStatus.clientIP || 'Unknown'}</span>
+                          </p>
+                          <div className="mt-2 text-[11px] text-slate-400">
+                            <span className="block font-medium mb-1">Allowed Office IP(s):</span>
+                            <div className="flex flex-wrap gap-1">
+                              {networkStatus.allowedIPs.map((ip) => (
+                                <span key={ip} className="px-2 py-0.5 rounded bg-slate-800 text-amber-300 font-mono text-[10px] border border-slate-700 font-semibold">
+                                  {ip}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Wi-Fi Name Input verification form - ONLY shown if Admin actually configured Wi-Fi names */}
+                  {hasConfiguredWifi && (
+                    <form onSubmit={handleVerifyWifi} className="bg-slate-900/80 rounded-xl p-4 border border-slate-700 space-y-3">
+                      <label className="block text-xs font-semibold text-slate-300">
+                        Connected to office Wi-Fi? Enter or confirm your Wi-Fi Network Name:
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={wifiInput}
+                          onChange={(e) => setWifiInput(e.target.value)}
+                          placeholder="e.g. Airtel_shan_6332, DevBhoomi-WiFi"
+                          className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                        />
+                        <button
+                          type="submit"
+                          disabled={isVerifyingWifi}
+                          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white text-xs font-bold rounded-lg transition-colors flex items-center justify-center shadow-md shadow-blue-600/30"
+                        >
+                          {isVerifyingWifi ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : 'Verify Wi-Fi'}
+                        </button>
+                      </div>
+                    </form>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* Action buttons */}
             <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-slate-700/60">
@@ -264,7 +271,11 @@ const EmployeeLayout = ({ children }) => {
               </button>
 
               <p className="text-[11px] text-slate-400 text-center sm:text-right">
-                Matches if Wi-Fi Name <span className="font-bold text-white">OR</span> IP Address matches.
+                {Boolean(networkStatus.allowedWifiNames?.length && networkStatus.allowedIPs?.length)
+                  ? 'Matches if Wi-Fi Name OR IP Address matches.'
+                  : networkStatus.allowedIPs?.length
+                  ? 'Automatic verification by Office Wi-Fi IP.'
+                  : 'Automatic verification by Office Wi-Fi Name.'}
               </p>
             </div>
           </div>
