@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import AdminLayout from '../../layouts/AdminLayout';
 import { Button } from '../../components/ui/Button';
 import {
@@ -13,6 +14,7 @@ import {
   AlertTriangle,
   X,
   Filter,
+  UserCheck,
 } from 'lucide-react';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
@@ -312,15 +314,21 @@ const AdminAttendance = () => {
                   attendances.map((record) => (
                     <tr key={record._id} className="hover:bg-gray-50/80 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-xs mr-3">
+                        <Link
+                          to={record.employee?._id ? `/admin/employee-attendance?employeeId=${record.employee._id}` : '#'}
+                          className="flex items-center group"
+                          title="Click to view individual employee attendance timesheet"
+                        >
+                          <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-xs mr-3 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
                             {record.employee?.name ? record.employee.name.charAt(0) : 'U'}
                           </div>
                           <div>
-                            <div className="text-sm font-semibold text-gray-900">{record.employee?.name || 'Unknown'}</div>
+                            <div className="text-sm font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors">
+                              {record.employee?.name || 'Unknown'}
+                            </div>
                             <div className="text-xs text-gray-500 font-mono">ID: {record.employee?.employeeId || '-'}</div>
                           </div>
-                        </div>
+                        </Link>
                       </td>
 
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-mono">
@@ -355,7 +363,16 @@ const AdminAttendance = () => {
                         )}
                       </td>
 
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                        {record.employee?._id && (
+                          <Link
+                            to={`/admin/employee-attendance?employeeId=${record.employee._id}`}
+                            className="text-gray-400 hover:text-indigo-600 transition-colors p-1 inline-block"
+                            title="View Individual Attendance Timesheet"
+                          >
+                            <UserCheck className="w-4 h-4" />
+                          </Link>
+                        )}
                         <button
                           onClick={() => handleDeleteRecord(record._id, record.employee?.name)}
                           className="text-gray-400 hover:text-red-600 transition-colors p-1"

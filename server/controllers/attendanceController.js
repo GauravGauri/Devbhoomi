@@ -1,5 +1,7 @@
 const Attendance = require('../models/Attendance');
 const AttendanceSettings = require('../models/AttendanceSettings');
+const User = require('../models/User');
+const Leave = require('../models/Leave');
 const { checkNetworkAuth } = require('../utils/networkAuth');
 const { checkGeofenceAuth } = require('../utils/geoAuth');
 const logAudit = require('../utils/auditLogger');
@@ -549,6 +551,172 @@ const getGeoStatus = async (req, res, next) => {
   }
 };
 
+// @desc    Get individual employee attendance with monthly & weekly working hours breakdown
+// @route   GET /api/attendance/employee/:employeeId
+// @access  Private/Admin
+const getIndividualEmployeeAttendance = async (req, res, next) => {
+  try {
+    const { employeeId } = req.params;
+    const { month } = req.query; // YYYY-MM
+
+    const targetMonth = month || moment().format('YYYY-MM');
+    const startOfMonth = moment(targetMonth, 'YYYY-MM').startOf('month');
+    const endOfMonth = moment(targetMonth, 'YYYY-MM').endOf('month');
+    const daysInMonth = startOfMonth.daysInMonth();
+
+    const employee = await User.findById(employeeId)
+      .select('-password')
+      .populate('department', 'name code')
+      .populate('shift');
+
+    if (!employee) {
+      res.status(404);
+      throw new Error('Employee not found');
+    }
+
+    const startStr = startOfMonth.format('YYYY-MM-DD');
+    const endStr = endOfMonth.format('YYYY-MM-DD');
+
+    // Fetch all attendance records for this month
+    const records = await Attendance.find({
+      employee: employee._id,
+      date: { $gte: startStr, $lte: endStr },
+    }).sort({ date: 1 });
+
+    // Fetch leaves for this month
+    const leaves = await Leave.find({
+      employee: employee._id,
+      status: { $in: ['Approved', 'Pending'] },
+      startDate: { $lte: endStr },
+      endDate: { $gte: startStr },
+    }).sort({ startDate: 1 });
+
+    // Monthly aggregates
+    const totalPresent = records.filter((r) => r.attendanceType === 'Present').length;
+    const totalLate = records.filter((r) => r.late).length;
+    const totalLateMinutes = records.reduce((sum, r) => sum + (r.lateMinutes || 0), 0);
+    const totalHalfDay = records.filter((r) => r.attendanceType === 'Half Day').length;
+
+    const totalWorkingMinutes = records.reduce((sum, r) => sum + (r.workingHours || 0), 0);
+    const totalBreakMinutes = records.reduce((sum, r) => sum + (r.totalBreakMinutes || 0), 0);
+
+    const avgDailyWorkingMinutes = totalPresent > 0 ? Math.round(totalWorkingMinutes / totalPresent) : 0;
+
+    // Shift settings
+    const shiftHoursDaily = employee.shift?.minimumWorkingHours ? employee.shift.minimumWorkingHours / 60 : 8;
+
+    // Build weekly breakdown for the entire month
+    const weeklyBreakdown = [];
+    let currentDay = startOfMonth.clone();
+    let weekIndex = 1;
+
+    while (currentDay.isSameOrBefore(endOfMonth)) {
+      const weekStart = currentDay.clone();
+      let weekEnd = currentDay.clone().endOf('isoWeek');
+      if (weekEnd.isAfter(endOfMonth)) {
+        weekEnd = endOfMonth.clone();
+      }
+
+      const wStartStr = weekStart.format('YYYY-MM-DD');
+      const wEndStr = weekEnd.format('YYYY-MM-DD');
+
+      const weekRecords = records.filter((r) => r.date >= wStartStr && r.date <= wEndStr);
+      const weekWorkMins = weekRecords.reduce((sum, r) => sum + (r.workingHours || 0), 0);
+      const weekBreakMins = weekRecords.reduce((sum, r) => sum + (r.totalBreakMinutes || 0), 0);
+      const weekPresent = weekRecords.filter((r) => r.attendanceType === 'Present').length;
+      const weekLate = weekRecords.filter((r) => r.late).length;
+      const weekHalfDay = weekRecords.filter((r) => r.attendanceType === 'Half Day').length;
+
+      // Count working days (Mon-Sat, excluding Sun)
+      let workingDays = 0;
+      let temp = weekStart.clone();
+      while (temp.isSameOrBefore(weekEnd)) {
+        if (temp.day() !== 0) workingDays++;
+        temp.add(1, 'day');
+      }
+      const expectedMins = workingDays * (shiftHoursDaily * 60);
+
+      weeklyBreakdown.push({
+        weekNumber: weekIndex,
+        label: `Week ${weekIndex} (${weekStart.format('MMM D')} - ${weekEnd.format('MMM D')})`,
+        startDate: wStartStr,
+        endDate: wEndStr,
+        totalDays: weekEnd.diff(weekStart, 'days') + 1,
+        workingDaysCount: workingDays,
+        daysPresent: weekPresent,
+        daysLate: weekLate,
+        daysHalfDay: weekHalfDay,
+        totalWorkMinutes: weekWorkMins,
+        totalWorkHours: (weekWorkMins / 60).toFixed(1),
+        formattedWorkHours: `${Math.floor(weekWorkMins / 60)}h ${weekWorkMins % 60}m`,
+        totalBreakMinutes: weekBreakMins,
+        formattedBreakHours: `${Math.floor(weekBreakMins / 60)}h ${weekBreakMins % 60}m`,
+        expectedWorkMinutes: expectedMins,
+        formattedExpectedHours: `${Math.floor(expectedMins / 60)}h ${expectedMins % 60}m`,
+        overtimeOrDeficitMinutes: weekWorkMins - expectedMins,
+        attendanceRate: workingDays > 0 ? Math.round((weekPresent / workingDays) * 100) : 0,
+        records: weekRecords,
+      });
+
+      weekIndex++;
+      currentDay = weekEnd.clone().add(1, 'day');
+    }
+
+    // Ongoing current calendar week
+    const currentWeekStart = moment().startOf('isoWeek').format('YYYY-MM-DD');
+    const currentWeekEnd = moment().endOf('isoWeek').format('YYYY-MM-DD');
+    const currentWeekRecords = await Attendance.find({
+      employee: employee._id,
+      date: { $gte: currentWeekStart, $lte: currentWeekEnd },
+    });
+    const currentWeekWorkMins = currentWeekRecords.reduce((sum, r) => sum + (r.workingHours || 0), 0);
+    const currentWeekBreakMins = currentWeekRecords.reduce((sum, r) => sum + (r.totalBreakMinutes || 0), 0);
+    const currentWeekPresent = currentWeekRecords.filter((r) => r.attendanceType === 'Present').length;
+    const currentWeekLate = currentWeekRecords.filter((r) => r.late).length;
+
+    res.status(200).json({
+      success: true,
+      employee,
+      month: targetMonth,
+      summary: {
+        totalDaysInMonth: daysInMonth,
+        totalLoggedRecords: records.length,
+        totalPresent,
+        totalLate,
+        totalLateMinutes,
+        totalHalfDay,
+        totalWorkingMinutes,
+        totalWorkingHours: (totalWorkingMinutes / 60).toFixed(1),
+        formattedTotalWorkingHours: `${Math.floor(totalWorkingMinutes / 60)}h ${totalWorkingMinutes % 60}m`,
+        totalBreakMinutes,
+        totalBreakHours: (totalBreakMinutes / 60).toFixed(1),
+        formattedTotalBreakHours: `${Math.floor(totalBreakMinutes / 60)}h ${totalBreakMinutes % 60}m`,
+        avgDailyWorkingMinutes,
+        formattedAvgDailyHours: `${Math.floor(avgDailyWorkingMinutes / 60)}h ${avgDailyWorkingMinutes % 60}m`,
+        approvedLeavesCount: leaves.filter((l) => l.status === 'Approved').length,
+        pendingLeavesCount: leaves.filter((l) => l.status === 'Pending').length,
+      },
+      weeklyBreakdown,
+      currentWeek: {
+        startDate: currentWeekStart,
+        endDate: currentWeekEnd,
+        totalWorkMinutes: currentWeekWorkMins,
+        totalWorkHours: (currentWeekWorkMins / 60).toFixed(1),
+        formattedWorkHours: `${Math.floor(currentWeekWorkMins / 60)}h ${currentWeekWorkMins % 60}m`,
+        totalBreakMinutes: currentWeekBreakMins,
+        formattedBreakHours: `${Math.floor(currentWeekBreakMins / 60)}h ${currentWeekBreakMins % 60}m`,
+        daysPresent: currentWeekPresent,
+        daysLate: currentWeekLate,
+        recordsCount: currentWeekRecords.length,
+      },
+      records,
+      leaves,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   checkIn,
   startBreak,
@@ -562,4 +730,5 @@ module.exports = {
   deleteAttendance,
   verifyLocationAndAutoBreak,
   getGeoStatus,
+  getIndividualEmployeeAttendance,
 };

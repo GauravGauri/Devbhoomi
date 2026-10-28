@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../../layouts/AdminLayout';
 import { Button } from '../../components/ui/Button';
 import {
@@ -15,11 +16,13 @@ import {
   X,
   Phone,
   Mail,
+  Calendar,
 } from 'lucide-react';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 
 const Employees = () => {
+  const navigate = useNavigate();
   const [employees, setEmployees] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -397,6 +400,12 @@ const Employees = () => {
                         {/* Dropdown Menu */}
                         {actionDropdownId === person._id && (
                           <div className="absolute right-6 mt-2 w-48 rounded-xl bg-white shadow-xl border border-gray-200 py-1.5 z-20 text-left">
+                            <button
+                              onClick={() => navigate(`/admin/employee-attendance?employeeId=${person._id}`)}
+                              className="w-full px-4 py-2 text-xs font-medium text-gray-700 hover:bg-gray-100 flex items-center"
+                            >
+                              <Calendar className="w-3.5 h-3.5 mr-2 text-indigo-600" /> View Attendance
+                            </button>
                             <button
                               onClick={() => openEditModal(person)}
                               className="w-full px-4 py-2 text-xs font-medium text-gray-700 hover:bg-gray-100 flex items-center"

@@ -1,6 +1,6 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { AuthContext } from '../context/AuthContext';
-import { LogOut, Users, Calendar, Settings, FileText, Activity, Clock, Shield, Menu, X } from 'lucide-react';
+import { LogOut, Users, Calendar, Settings, FileText, Activity, Clock, Shield, Menu, X, UserCheck } from 'lucide-react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import api from '../services/api';
 
@@ -38,7 +38,8 @@ const AdminLayout = ({ children }) => {
   const navItems = [
     { name: 'Dashboard', path: '/admin/dashboard', icon: Activity },
     { name: 'Employees', path: '/admin/employees', icon: Users },
-    { name: 'Attendance', path: '/admin/attendance', icon: Calendar },
+    { name: 'Attendance Ledger', path: '/admin/attendance', icon: Calendar },
+    { name: 'Individual Attendance', path: '/admin/employee-attendance', icon: UserCheck },
     { name: 'Leaves', path: '/admin/leaves', icon: Clock, badge: pendingLeavesCount },
     { name: 'Reports', path: '/admin/reports', icon: FileText },
     { name: 'Settings', path: '/admin/settings', icon: Settings },

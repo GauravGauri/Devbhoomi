@@ -12,6 +12,7 @@ import Profile from './pages/employee/Profile';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import Employees from './pages/admin/Employees';
 import AdminAttendance from './pages/admin/Attendance';
+import IndividualAttendance from './pages/admin/IndividualAttendance';
 import AdminLeaves from './pages/admin/Leaves';
 import AdminReports from './pages/admin/Reports';
 import AdminSettings from './pages/admin/Settings';
@@ -45,6 +46,7 @@ const App = () => {
         <Route path="/admin/dashboard" element={user && user.role === 'admin' ? <AdminDashboard /> : <Navigate to="/admin/login" />} />
         <Route path="/admin/employees" element={user && user.role === 'admin' ? <Employees /> : <Navigate to="/admin/login" />} />
         <Route path="/admin/attendance" element={user && user.role === 'admin' ? <AdminAttendance /> : <Navigate to="/admin/login" />} />
+        <Route path="/admin/employee-attendance" element={user && user.role === 'admin' ? <IndividualAttendance /> : <Navigate to="/admin/login" />} />
         <Route path="/admin/leaves" element={user && user.role === 'admin' ? <AdminLeaves /> : <Navigate to="/admin/login" />} />
         <Route path="/admin/reports" element={user && user.role === 'admin' ? <AdminReports /> : <Navigate to="/admin/login" />} />
         <Route path="/admin/settings" element={user && user.role === 'admin' ? <AdminSettings /> : <Navigate to="/admin/login" />} />

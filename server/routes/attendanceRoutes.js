@@ -13,6 +13,7 @@ const {
   deleteAttendance,
   verifyLocationAndAutoBreak,
   getGeoStatus,
+  getIndividualEmployeeAttendance,
 } = require('../controllers/attendanceController');
 const { protect, admin } = require('../middleware/authMiddleware');
 
@@ -26,6 +27,7 @@ router.get('/me', protect, getMyAttendanceStatus);
 router.get('/my-history', protect, getMyAttendanceHistory);
 router.get('/network-status', protect, getNetworkStatus);
 router.get('/all', protect, admin, getAllAttendances);
+router.get('/employee/:employeeId', protect, admin, getIndividualEmployeeAttendance);
 router.post('/manual', protect, admin, manualAttendance);
 router.delete('/:id', protect, admin, deleteAttendance);
 
